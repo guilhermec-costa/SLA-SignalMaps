@@ -2,7 +2,6 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 from grids_sheets import GridBuilder
-import googlemaps
 
 st.set_page_config(layout='wide', page_title='mapas')
 
