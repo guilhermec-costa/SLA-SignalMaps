@@ -1,0 +1,1 @@
+Somente instalações realizadas pela Laager

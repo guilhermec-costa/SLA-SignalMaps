@@ -1,0 +1,1 @@
+somente instalações realizadas pela Connexa
