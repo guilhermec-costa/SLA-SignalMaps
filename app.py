@@ -2,7 +2,10 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 from grids_sheets import GridBuilder
+<<<<<<< HEAD
 import plotly.graph_objects as go
+=======
+>>>>>>> 1f121eff6bfbe26d05c84f0a1830b655cee7940d
 
 st.set_page_config(layout='wide', page_title='mapas')
 
@@ -112,8 +115,11 @@ c_todos_pontos_df.plotly_chart(mapa_todos, use_container_width=True)
 c_agrupado_df.plotly_chart(mapa_agrupado, use_container_width=True)
 
 st.markdown(streamlit_style, unsafe_allow_html=True)
+<<<<<<< HEAD
 metricas = dados_agrupado.describe().drop('count', axis=0).reset_index().rename(columns={'index':'metricas'})
 metricas['IEF'] = metricas['IEF'].apply(lambda x: round(x, 2))
 fig_descritiva = analise_descritiva(metricas)
 # st.plotly_chart(fig_descritiva, use_container_width=True)
 # st.plotly_chart(mapa_teste, use_container_width=True)
+=======
+>>>>>>> 1f121eff6bfbe26d05c84f0a1830b655cee7940d
