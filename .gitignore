@@ -1,3 +1,4 @@
 .streamlit/secrets.toml
 *.pyc 
 __pycache__/
+teste_distancia.py
