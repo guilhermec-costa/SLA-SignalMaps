@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 
 with open(r'lat_long_jardins\apenas_jardins.kml') as file:
-    soup = BeautifulSoup(file.read(), 'xml')
+    soup = BeautifulSoup(file.read(), 'lxml')
 
 latitudes = []
 longitudes = []
@@ -17,6 +17,6 @@ for conjunto in cordenadas:
 
 df = pd.DataFrame(data={'Latitude':latitudes, 'Longitude':longitudes})
 print(df)
-df.to_csv('apenas_jardins_coordenadas.csv', sep=',', index=False)
+# df.to_csv('apenas_jardins_coordenadas.csv', sep=',', index=False)
 # print(len(latitudes), len(longitudes))
 # print(latitudes)
