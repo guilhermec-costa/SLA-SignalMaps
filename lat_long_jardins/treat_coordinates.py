@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 import pandas as pd
 
-with open(r'lat_long_jardins\apenas_jardins.kml') as file:
+with open(r'apenas_jardins.kml') as file:
     soup = BeautifulSoup(file.read(), 'lxml')
 
 latitudes = []
