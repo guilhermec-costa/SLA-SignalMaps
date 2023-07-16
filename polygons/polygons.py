@@ -11,3 +11,6 @@ def calculate_polygons(lat, long, radius=1500):
 
 def check_if_pol_contains(args):
     idx, ponto, polygon = args
+    if polygon.contains(ponto):
+        return idx
+    return None
