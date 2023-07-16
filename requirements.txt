@@ -6,3 +6,4 @@ plotly==5.14.0
 streamlit-aggrid==0.3.3
 lxml==4.9.3
 geopy==2.3.0
+shapely==2.0.1

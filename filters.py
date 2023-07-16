@@ -45,10 +45,8 @@ class Filters:
 
     def general_filter(self, opcs: list, refer_column):
         self.df = self.df[(self.df[refer_column].isin(opcs))]
+    
+    def general_qty_filter(self, min_value, max_value, refer_column):
+        self.df = self.df[(self.df[refer_column] >= min_value) & (self.df[refer_column] <= max_value)]
 
-    # def city_filter(self, opcs: list, refer_column):
-    #     self.df = self.df[(self.df[refer_column].isin(opcs))]
-
-    # def group_filter(self, opcs: list, refer_column):
-    #     self.df = self.df[(self.df[refer_column].isin(opcs))]
     

@@ -1,14 +1,11 @@
-import numpy as np
 from geopy.distance import geodesic
 
-constant = 6371000
 def make_circles(radius, point_numbers, lat, long):
     circle_points = []
-    for bearing in range(0, 361, 10):
+    poligono_teste = []
+    for bearing in range(0, 361, 10): # são formados 37 pares de coordenadas
         point = geodesic(meters=radius).destination((lat, long), bearing)
         circle_points.append((point.latitude, point.longitude))
-    # angulos = np.linspace(0, 2 * np.pi, num=point_numbers)
-    # lat_circle = lat + (radius/6371000) * np.sin(angulos)
-    # lon_circle = long + (radius/6371000) * np.cos(angulos)
+        poligono_teste.append(tuple([point.latitude, point.longitude]))
 
     return circle_points
