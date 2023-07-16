@@ -4,3 +4,4 @@ __pycache__/
 teste_distancia.py
 .my_env
 *.zip
+.venv

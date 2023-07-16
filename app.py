@@ -1,24 +1,14 @@
 import streamlit as st
-import plotly.express as px
 import pandas as pd
 from grids_sheets import GridBuilder
-from figures import sla_maps
+from figures import sla_maps, stastics_fig
 from filters import Filters
-import make_circles
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point
 import read_data
+from polygons.polygons import calculate_polygons
+from concurrent.futures import ThreadPoolExecutor
 
 st.set_page_config(layout='wide', page_title='mapas')
-
-def analise_descritiva(data):
-    fig = px.bar(data, x='metricas', y='IEF', color='metricas', color_discrete_sequence=px.colors.qualitative.Alphabet, text_auto=True)
-    fig.update_layout(title=dict(text='Análise descritiva do SLA dos dados', xanchor='center', yanchor='top', x=0.5, y=0.98, font=dict(size=25, color='whitesmoke')),
-                      font=dict(family='roboto'), uniformtext_minsize=20)
-    fig.update_traces(textposition='outside')
-    fig.update_xaxes(title=dict(text='Métricas', font=dict(size=18, family='roboto')), showticklabels=True, tickfont=dict(size=16, family='roboto'))
-    fig.update_yaxes(title=dict(text='SLA', font=dict(size=18, family='roboto')), showticklabels=True, tickfont=dict(size=16, family='roboto'))
-    return fig
-
 def start_app():
     data = read_data.read_data('projeto_comgas.csv', sep=';')
     jardins_coordenadas = read_data.read_data('coordenadas_jardins.csv')
@@ -85,7 +75,7 @@ def start_app():
 
     metricas = filtered_group.df.describe().drop('count', axis=0).reset_index().rename(columns={'index':'metricas'})
     metricas['IEF'] = metricas['IEF'].apply(lambda x: round(x, 2))
-    fig_descritiva = analise_descritiva(metricas)
+    fig_descritiva = stastics_fig.analise_descritiva(metricas)
     st.plotly_chart(fig_descritiva, use_container_width=True)
 
     st.markdown('---')
@@ -93,50 +83,51 @@ def start_app():
     gtw_number, gtw_range = st.columns(2)
     qty_of_gtw = gtw_number.number_input('Quantos gateways possuo: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
     add_gtws = gtw_number.multiselect('Ou selecione condomínios específicos', options=filtered_group.df['Grupo - Nome'].unique())
-    persinalized_gtw = filtered_group.df[filtered_group.df['Grupo - Nome'].isin(add_gtws)]
+    personalized_gtw = filtered_group.df[filtered_group.df['Grupo - Nome'].isin(add_gtws)]
     gtw_range = gtw_range.number_input('Qual o alcance em metros deles: ', min_value=1, value=1500)
 
     df_filtered_per_points = filtered_group.df.sort_values(by='Pontos instalados', ascending=False).iloc[:int(qty_of_gtw), :].reset_index()
-    df_filtered_per_points = pd.concat([df_filtered_per_points, persinalized_gtw.reset_index()], ignore_index=True)
+    df_filtered_per_points = pd.concat([df_filtered_per_points, personalized_gtw.reset_index()], ignore_index=True)
+    st.write(df_filtered_per_points)
     qty_that_is_contained = 0
-    list_of_poligons = []
     affected_points = pd.DataFrame()
-    # função para calcular os polígonos
-    # calcular os polúgonos anteriormente
-    lat_list = []
-    lon_list = []
+
     lat_list, lon_list = list(df_filtered_per_points['Latitude']), list(df_filtered_per_points['Longitude'])
+    with ThreadPoolExecutor() as executor:
+        list_of_polygons = list(executor.map(calculate_polygons, lat_list, lon_list))
+    
     with st.spinner('Recalculando polígnos...'):
         for idx, lat in enumerate(lat_list):
-            #cada condominio tem seu poligono
-            new_lat_list = []
-            new_lon_list = []
-            lista = make_circles.make_circles(radius=gtw_range, point_numbers=100, lat=lat, long=lon_list[idx])
-            # cada lista deve ser o polígono do condominio correspondente
-            # lista = círculo de pontos
-            poligono = Polygon(lista)
+            current_polygon = list_of_polygons[idx]
+            temporary_lats = []
+            temporary_longs = []
+            args = [(index, ponto, current_polygon) for index, ponto in enumerate(cp_data['Ponto'])]
+            # cada condomínio tem seu par de coordenadas.
+            #Portanto, cada condomínio tem seu polígono de circunferência
+            polygon, circle_points = calculate_polygons(lat, lon_list[idx])
+            print(f'Tabela de pontos possui {len(cp_data)}')
             for index, ponto in enumerate(cp_data['Ponto']):
-                if poligono.contains(ponto):
+                if polygon.contains(ponto):
                     affected_points = pd.concat([affected_points, cp_data.iloc[index:index + 1]])
+                    # cp_data.drop(axis='index', labels=index, inplace=True)
                     qty_that_is_contained += 1
+            # cp_data.reset_index().drop(columns=['index'])
+            for tuple_of_coord in circle_points:
+                temporary_lats.append(tuple_of_coord[0])
+                temporary_longs.append(tuple_of_coord[1])
 
-            for lists in lista:
-                new_lat_list.append(lists[0])
-                new_lon_list.append(lists[1])
-
-            poligon_df = pd.DataFrame(data={'Latitude':new_lat_list, 'Longitude':new_lon_list})
+            poligon_df = pd.DataFrame(data={'Latitude':temporary_lats, 'Longitude':temporary_longs})
             sla_maps.add_traces_on_map(mapa_agrupado, another_data=poligon_df, fillcolor='rgba(110, 226, 1, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])
             sla_maps.add_traces_on_map(mapa_todos, another_data=poligon_df, fillcolor='rgba(110, 226, 1, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])
 
         points_metrics, sla_metrics = st.columns(2)
-    try:
+    if df_filtered_per_points.shape[0] >= 1:
         points_metrics.metric(f'Pontos afetados', value=f'{qty_that_is_contained} pontos')
         sla_metrics.metric(f'SLA dos pontos filtrados', value=round(affected_points['IEF'].mean(), 2))
-    except: st.warning('No data filtered')
 
-    with st.expander('Ver pontos e condomínios afetados'):
-        st.write(affected_points)
-        st.write(df_filtered_per_points)
+    # with st.expander('Ver pontos e condomínios afetados'):
+    #     st.write(affected_points)
+    #     st.write(df_filtered_per_points)
 
     c_gtw_condos, c_gtw_pontos = st.columns(2)
     c_gtw_pontos.plotly_chart(mapa_todos, use_container_width=True)
