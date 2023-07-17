@@ -7,7 +7,7 @@ def get_mapbox_token() -> str:
         return token.read()
 
 def check_bubble_size(type_of_group: str) -> dict.values:
-    dinamic_sizes = {'Pontos instalados': 45, 'IEF': 20}
+    dinamic_sizes = {'Pontos instalados': 50, 'IEF': 25}
     return dinamic_sizes.get(type_of_group)
 
 def add_traces_on_map(fig, another_data, name, fillcolor: str = 'rgba(255, 205, 0, 0)') -> None:

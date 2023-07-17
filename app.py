@@ -10,6 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
 st.set_page_config(layout='wide', page_title='mapas')
+def initialize_session_states():
+    if 'gtw_filters' not in st.session_state:
+        st.session_state.gtw_filters = False
+
 def start_app():
     data = read_data.read_data('projeto_comgas.csv', sep=';')
     jardins_coordenadas = read_data.read_data('coordenadas_jardins.csv')
@@ -19,11 +23,11 @@ def start_app():
 
     agrupado_por_condo = data.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome']).agg({'IEF':'mean', 'Matrícula':'count', 'Latitude':'mean', 'Longitude':'mean'}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
-    grid_pontos_agrupados = GridBuilder(agrupado_por_condo, key='grid_pontos_agrupados')
+    # grid_pontos_agrupados = GridBuilder(agrupado_por_condo, key='grid_pontos_agrupados')
     
     st.subheader('Pontos agrupados por condomínio')
-    tabela_agrupado, dados_agrupado = grid_pontos_agrupados.grid_builder()
-    filtered_group = Filters(dados_agrupado)
+    # tabela_agrupado, dados_agrupado = grid_pontos_agrupados.grid_builder()
+    filtered_group = Filters(agrupado_por_condo)
     filtered_data = Filters(data)
 
     c_BU, c_condo, c_cidade = st.columns(3)
@@ -54,7 +58,7 @@ def start_app():
         filtered_group.df.rename(columns={'Matrícula':'Pontos instalados'}, inplace=True)
         st.write(filtered_group.df.sort_values(by='Pontos instalados', ascending=False))
         st.markdown('---')
-        st.write(filtered_data.df.sort_values('IEF', ascending=False))
+        st.write(filtered_data.df)
 
     theme_position, ponto_filtrado, sla_filtrado, opc_agrupamento, *_ = st.columns(5)
     theme_position.metric('Endereços filtrados:', f'{filtered_group.df.shape[0]} ({round(filtered_group.df.shape[0] / len(agrupado_por_condo) * 100, 2)})%',
@@ -62,20 +66,16 @@ def start_app():
     ponto_filtrado.metric('Pontos filtrados:', f'{filtered_data.df.shape[0]} ({round(len(filtered_data.df) / cp_data.shape[0] * 100, 2)})%',
                         help=f'Total de pontos: {cp_data.shape[0]}')
     sla_filtrado.metric('SLA filtrado', value=f'{round(np.mean(filtered_group.df.IEF), 2)}%')
-    
-
-    theme_options = ['carto-darkmatter','satellite', 'satellite-streets', 'carto-positron', 'dark', 'open-street-map', 'streets', 'stamen-terrain', 'stamen-toner',
-                            'stamen-watercolor', 'basic', 'outdoors', 'light', 'white-bg']
-
-    choosed_theme = theme_position.selectbox('Choose any theme', options=theme_options, index=0)
     st.markdown('---')
 
-    mapa_todos = sla_maps.plot_sla_map(filtered_data.df, title='Mapa de SLA teste', colmn_to_base_color='IEF', theme=choosed_theme, group_type='IEF')
+    mapa_todos = sla_maps.plot_sla_map(filtered_data.df, title='Mapa: SLA de cada ponto', colmn_to_base_color='IEF', theme='open-street-map', group_type='IEF')
     sla_maps.add_traces_on_map(mapa_todos, another_data=jardins_coordenadas, name='Área dos Jardins')
-    agrupamento = opc_agrupamento.radio('Ver por:', options=['IEF', 'Pontos instalados'])
-    mapa_agrupado = sla_maps.plot_sla_map(filtered_group.df, title=f'Mapa de {agrupamento} agrupado por condomínio', theme=choosed_theme, group_type=agrupamento,
-                                        colmn_to_base_color=agrupamento)
-    sla_maps.add_traces_on_map(mapa_agrupado, another_data=jardins_coordenadas, name='Área dos Jardins')
+    mapa_agrupado_por_ponto = sla_maps.plot_sla_map(filtered_group.df, title=f'Mapa: Pontos instalados agrupados por condomínio', theme='open-street-map', group_type='Pontos instalados',
+                                        colmn_to_base_color='Pontos instalados')
+    mapa_agrupado_por_sla = sla_maps.plot_sla_map(filtered_group.df, title=f'Mapa: SLA agrupado por condomínio', theme='open-street-map', group_type='IEF',
+                                        colmn_to_base_color='IEF')
+    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=jardins_coordenadas, name='Área dos Jardins')
+    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=jardins_coordenadas, name='Área dos Jardins')
 
     metricas = filtered_group.df.describe().drop('count', axis=0).reset_index().rename(columns={'index':'metricas'})
     metricas['IEF'] = metricas['IEF'].apply(lambda x: round(x, 2))
@@ -84,58 +84,64 @@ def start_app():
 
     st.markdown('---')
     st.subheader('Análise de alcance de gateways')
-    gtw_number, gtw_range = st.columns(2)
-    qty_of_gtw = gtw_number.number_input('Quantos gateways possuo: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
-    add_gtws = gtw_number.multiselect('Ou selecione condomínios específicos', options=filtered_group.df['Grupo - Nome'].unique())
-    personalized_gtw = filtered_group.df[filtered_group.df['Grupo - Nome'].isin(add_gtws)]
-    gtw_range = gtw_range.number_input('Qual o alcance em metros deles: ', min_value=1, value=1500)
+    with st.form('gtw_form'):
+        gtw_number, gtw_range = st.columns(2)
+        qty_of_gtw = gtw_number.number_input('Quantos gateways possuo: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
+        add_gtws = gtw_number.multiselect('Ou selecione condomínios específicos', options=filtered_group.df['Grupo - Nome'].unique())
+        personalized_gtw = filtered_group.df[filtered_group.df['Grupo - Nome'].isin(add_gtws)]
+        gtw_range = gtw_range.number_input('Qual o alcance em metros deles: ', min_value=1, value=1500)
 
-    df_filtered_per_points = filtered_group.df.sort_values(by='Pontos instalados', ascending=False).iloc[:int(qty_of_gtw), :].reset_index()
-    df_filtered_per_points = pd.concat([df_filtered_per_points, personalized_gtw.reset_index()], ignore_index=True)
-    qty_that_is_contained = 0
-    affected_points = pd.DataFrame()
+        df_filtered_per_points = filtered_group.df.sort_values(by='Pontos instalados', ascending=False).iloc[:int(qty_of_gtw), :].reset_index()
+        df_filtered_per_points = pd.concat([df_filtered_per_points, personalized_gtw.reset_index()], ignore_index=True)
+        qty_that_is_contained = 0
+        submit_gtw = st.form_submit_button('Submit')
+        if submit_gtw: st.session_state.gtw_filters = True
 
-    lat_list, lon_list = list(df_filtered_per_points['Latitude']), list(df_filtered_per_points['Longitude'])
-    with st.spinner('Calculando polígonos...'):
-        with ThreadPoolExecutor() as executor:
-            list_of_polygons = list(executor.map(calculate_polygons, lat_list, lon_list))
-    
-    contained_index = []
-    with st.spinner('Calculando pontos  inclusos'):
-        with ThreadPoolExecutor() as executor:
-            for idx, lat in enumerate(lat_list):
-                current_polygon, current_list_of_circles = list_of_polygons[idx][0], list_of_polygons[idx][1]
-                temporary_lats = []
-                temporary_longs = []
-                args = [(index, ponto, current_polygon) for index, ponto in enumerate(filtered_data.df['Ponto'])]
-                results = executor.map(check_if_pol_contains, args)
-                contained_index.extend([i for i in results if i is not None])
-                filtered_data.df = filtered_data.df[~filtered_data.df.index.isin(contained_index)]
-                filtered_data.df.reset_index(inplace=True)
+    list_of_ploygon_dfs = []
+    if submit_gtw:
+        lat_list, lon_list = list(df_filtered_per_points['Latitude']), list(df_filtered_per_points['Longitude'])
+        with st.spinner('Calculando polígonos...'):
+            with ThreadPoolExecutor() as executor:
+                list_of_polygons = list(executor.map(calculate_polygons, lat_list, lon_list, [gtw_range]*len(lat_list)))
+        
+        contained_index = []
+        with st.spinner('Calculando pontos  inclusos'):
+            with ThreadPoolExecutor() as executor:
+                for idx, lat in enumerate(lat_list):
+                    current_polygon, current_list_of_circles = list_of_polygons[idx][0], list_of_polygons[idx][1]
+                    temporary_lats = []
+                    temporary_longs = []
+                    args = [(index, row['Ponto'], current_polygon) for index, row in filtered_data.df.iterrows()]
+                    results = executor.map(check_if_pol_contains, args)
+                    contained_index.extend([i for i in results if i is not None])
+                    filtered_data.df = filtered_data.df[~filtered_data.df.index.isin(contained_index)]
 
-                for tuple_of_coord in current_list_of_circles:
-                    temporary_lats.append(tuple_of_coord[0])
-                    temporary_longs.append(tuple_of_coord[1])
+                    for tuple_of_coord in current_list_of_circles:
+                        temporary_lats.append(tuple_of_coord[0])
+                        temporary_longs.append(tuple_of_coord[1])
 
-                poligon_df = pd.DataFrame(data={'Latitude':temporary_lats, 'Longitude':temporary_longs})
-                sla_maps.add_traces_on_map(mapa_agrupado, another_data=poligon_df, fillcolor='rgba(110, 226, 1, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])
-                sla_maps.add_traces_on_map(mapa_todos, another_data=poligon_df, fillcolor='rgba(110, 226, 1, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])
+                    poligon_df = pd.DataFrame(data={'Latitude':temporary_lats, 'Longitude':temporary_longs})
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=poligon_df, fillcolor='rgba(36, 122, 3, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=poligon_df, fillcolor='rgba(36, 122, 3, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])                 
+                    sla_maps.add_traces_on_map(mapa_todos, another_data=poligon_df, fillcolor='rgba(36, 122, 3, 0.2)', name=df_filtered_per_points.loc[idx:idx, 'Grupo - Nome'].values[0])
 
-    affected_points = cp_data.iloc[contained_index]
-    affected_points.drop_duplicates(subset=['Matrícula'], inplace=True)
-    qty_that_is_contained = affected_points.shape[0]
-    points_metrics, sla_metrics = st.columns(2)
-    if df_filtered_per_points.shape[0] >= 1:
-        points_metrics.metric(f'Pontos afetados', value=f'{qty_that_is_contained} pontos')
-        sla_metrics.metric(f'SLA dos pontos filtrados', value=round(affected_points['IEF'].mean(), 2))
+        affected_points = cp_data.loc[contained_index]
+        qty_that_is_contained = affected_points.shape[0]
+        points_metrics, sla_metrics = st.columns(2)
+        if df_filtered_per_points.shape[0] >= 1:
+            points_metrics.metric(f'Pontos afetados', value=f'{qty_that_is_contained} pontos')
+            sla_metrics.metric(f'SLA dos pontos filtrados', value=round(affected_points['IEF'].mean(), 2))
 
-    with st.expander('Ver pontos e condomínios afetados'):
-        st.write(affected_points)
-        st.write(df_filtered_per_points)
+        with st.expander('Ver pontos e condomínios afetados'):
+            st.write(affected_points)
+            st.write(df_filtered_per_points)
 
     c_gtw_condos, c_gtw_pontos = st.columns(2)
-    c_gtw_pontos.plotly_chart(mapa_todos, use_container_width=True)
-    c_gtw_condos.plotly_chart(mapa_agrupado, use_container_width=True)
+    # c_gtw_pontos.plotly_chart(mapa_todos, use_container_width=True)
+    c_gtw_condos.plotly_chart(mapa_agrupado_por_ponto, use_container_width=True)
+    c_gtw_pontos.plotly_chart(mapa_agrupado_por_sla, use_container_width=True)
+    st.plotly_chart(mapa_todos, use_container_width=True)
+    
 
 if __name__ == '__main__':
     with open('style.css') as style:
