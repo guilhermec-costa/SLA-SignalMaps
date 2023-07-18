@@ -1,10 +1,11 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import streamlit as st
+
 
 def get_mapbox_token() -> str:
-    with open('mapbox_token.txt') as token:
-        return token.read()
+    return st.secrets.mapbox.mapbox_token
 
 def check_bubble_size(type_of_group: str) -> dict.values:
     dinamic_sizes = {'Pontos instalados': 50, 'IEF': 25}
@@ -21,6 +22,7 @@ def plot_sla_map(data_sla: pd.DataFrame, title: str, colmn_to_base_color = None,
                             size=group_type, size_max=bubble_size, center=dict(lat=-23.5607, lon=-46.8171), zoom=8, opacity=0.95, hover_name='Grupo - Nome')
     fig.update_layout(title=dict(text=title, xanchor='center', yanchor='top', x=0.5, y=0.98, font=dict(size=25, color='whitesmoke')),
                     font=dict(family='roboto'), mapbox=dict(accesstoken=get_mapbox_token(),
-                                                            style=theme), legend=dict(orientation='h', yanchor='bottom', y=-0.2))
+                                                            style=theme), legend=dict(orientation='h', yanchor='bottom', y=-0.15),
+                                                            template='plotly')
     
     return fig
