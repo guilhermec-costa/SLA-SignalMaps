@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from grids_sheets import GridBuilder
 from figures import sla_maps, stastics_fig, update_figs_layout
 from filters import Filters
 from shapely.geometry import Point
@@ -9,8 +8,7 @@ from polygons.polygons import calculate_polygons, check_if_pol_contains
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from stqdm import stqdm
-import time
-import plotly.graph_objects as go
+import json
 
 st.set_page_config(layout='wide', page_title='mapas')
 def initialize_session_states():
@@ -18,8 +16,10 @@ def initialize_session_states():
         st.session_state.gtw_filters = False
     if 'extra_selected_condo' not in st.session_state:
         st.session_state.extra_selected_condo = []
-    if 'grafico_vazio' not in st.session_state:
-        st.session_state.grafico_vazio = []
+    if 'all_polygon_dfs' not in st.session_state:
+        st.session_state.all_polygon_dfs = []
+    if 'index_list' not in st.session_state:
+        st.session_state.index_list = []
 
 def start_app():
     data = read_data.read_data('projeto_comgas.csv', sep=';')
@@ -75,8 +75,8 @@ def start_app():
     sla_filtrado.metric('SLA filtrado', value=f'{round(np.mean(filtered_group.df.IEF), 2)}%')
     st.markdown('---')
 
-    st.session_state.grafico_vazio = sla_maps.plot_sla_map(filtered_data.df, title='Mapa: SLA de cada ponto', colmn_to_base_color='IEF', theme='open-street-map', group_type='IEF')
-    sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=jardins_coordenadas, name='Área dos Jardins')
+    mapa_todos = sla_maps.plot_sla_map(filtered_data.df, title='Mapa: SLA de cada ponto', colmn_to_base_color='IEF', theme='open-street-map', group_type='IEF')
+    sla_maps.add_traces_on_map(mapa_todos, another_data=jardins_coordenadas, name='Área dos Jardins')
     mapa_agrupado_por_ponto = sla_maps.plot_sla_map(filtered_group.df, title=f'Mapa: Pontos instalados agrupados por condomínio', theme='open-street-map', group_type='Pontos instalados',
                                         colmn_to_base_color='Pontos instalados')
     mapa_agrupado_por_sla = sla_maps.plot_sla_map(filtered_group.df, title=f'Mapa: SLA agrupado por condomínio', theme='open-street-map', group_type='IEF',
@@ -113,28 +113,37 @@ def start_app():
             with ThreadPoolExecutor(4) as executor:
                 list_of_polygons = list(executor.map(calculate_polygons, lat_list, lon_list, [gtw_range]*len(lat_list)))
         
-        contained_index = []
+        st.session_state.index_list = []
         with st.spinner('Calculando pontos  inclusos'):
             with ThreadPoolExecutor(4) as executor:
                 for n in stqdm(range(len(lat_list))):
+                    if df_filtered_per_points.loc[n, 'Grupo - Nome'] not in ([d[0]['Name'] for d in st.session_state.all_polygon_dfs]):
+                    # condo_name = df_filtered_per_points.loc[n, 'Grupo - Nome']
+                    # nomes = [d[0]['Name'] for d in st.session_state.all_polygon_dfs]
+                    # if any(d[0]['Name'] == condo_name for d in st.session_state.all_polygon_dfs):
+                    #     continue
+                    # st.write(condo_name)
                 # for idx, lat in enumerate(lat_list):
-                    current_polygon, current_list_of_circles = list_of_polygons[n][0], list_of_polygons[n][1]
-                    args = [(index, row[-1], current_polygon) for index, *row in filtered_data.df.itertuples()]
-                    results = executor.map(check_if_pol_contains, args)
-                    contained_index.extend([i for i in results if i is not None])
-                    filtered_data.df = filtered_data.df[~filtered_data.df.index.isin(contained_index)]
+                        current_polygon, current_list_of_circles = list_of_polygons[n][0], list_of_polygons[n][1]
+                        args = [(index, row[-1], current_polygon) for index, *row in filtered_data.df.itertuples()]
+                        results = executor.map(check_if_pol_contains, args)
+                        st.session_state.index_list.extend([i for i in results if i is not None])
+                        filtered_data.df = filtered_data.df[~filtered_data.df.index.isin(st.session_state.index_list)]
 
-                    temporary_lats = [tuple_of_coords[0] for tuple_of_coords in current_list_of_circles]
-                    temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
+                        temporary_lats = [tuple_of_coords[0] for tuple_of_coords in current_list_of_circles]
+                        temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
 
-                    poligon_df = pd.DataFrame(data={'Latitude':temporary_lats, 'Longitude':temporary_longs})
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=poligon_df, fillcolor='rgba(36, 122, 3, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=poligon_df, fillcolor='rgba(36, 122, 3, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])                 
-                    sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=poligon_df, fillcolor='rgba(36, 122, 3, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
-        
-        affected_points = cp_data.loc[contained_index]
+                        poligon_df = pd.DataFrame(data={'Name': df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0],
+                                                        'Latitude':temporary_lats, 'Longitude':temporary_longs})
+                        poligon_df_serializable = json.loads(poligon_df.to_json(orient='records'))
+                        
+                        if poligon_df_serializable not in st.session_state.all_polygon_dfs:
+                            st.session_state.all_polygon_dfs.append(poligon_df_serializable)
+
+        affected_points = cp_data.loc[st.session_state.index_list]
         qty_that_is_contained = affected_points.shape[0]
         points_metrics, sla_metrics, sla_prevision = st.columns(3)
+
         if df_filtered_per_points.shape[0] >= 1:
             mean_sla_affecteds = round(affected_points['IEF'].mean(), 2)
             points_metrics.metric(f'Pontos afetados', value=f'{qty_that_is_contained} pontos')
@@ -145,16 +154,24 @@ def start_app():
                 st.write(affected_points)
                 st.write(agrupado_por_condo[agrupado_por_condo['Grupo - Nome'].isin(affected_points['Grupo - Nome'].unique())])
 
+    if st.session_state.all_polygon_dfs != []:
+        for poligon_df_serializable in st.session_state.all_polygon_dfs:
+            poligon_dfs = pd.DataFrame.from_records(poligon_df_serializable)
+            sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=poligon_dfs, fillcolor='rgba(36, 122, 3, 0.2)', name=poligon_dfs['Name'].unique()[0])
+            sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=poligon_dfs, fillcolor='rgba(36, 122, 3, 0.2)', name=poligon_dfs['Name'].unique()[0])                 
+            sla_maps.add_traces_on_map(mapa_todos, another_data=poligon_dfs, fillcolor='rgba(36, 122, 3, 0.2)', name=poligon_dfs['Name'].unique()[0])
+            # st.session_state.all_polygon_dfs.remove(poligon_df_serializable)
+
     theme_position, *_ = st.columns(5)
     theme_options = ['open-street-map', 'satellite', 'satellite-streets', 'carto-positron', 'carto-darkmatter', 'dark', 'streets', 'stamen-terrain', 'stamen-toner',
                         'stamen-watercolor', 'basic', 'outdoors', 'light', 'white-bg']
     choosed_theme = theme_position.selectbox('Choose any theme', options=theme_options, index=0)
-    update_figs_layout.update_fig_layouts([mapa_agrupado_por_ponto, mapa_agrupado_por_sla, st.session_state.grafico_vazio], theme=choosed_theme)
+    update_figs_layout.update_fig_layouts([mapa_agrupado_por_ponto, mapa_agrupado_por_sla, mapa_todos], theme=choosed_theme)
 
     c_gtw_condos, c_gtw_pontos = st.columns(2)
     c_gtw_condos.plotly_chart(mapa_agrupado_por_ponto, use_container_width=True)
     c_gtw_pontos.plotly_chart(mapa_agrupado_por_sla, use_container_width=True)
-    st.plotly_chart(st.session_state.grafico_vazio, use_container_width=True)
+    st.plotly_chart(mapa_todos, use_container_width=True)
     
 
 if __name__ == '__main__':
