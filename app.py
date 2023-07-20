@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-from grids_sheets import GridBuilder
-from figures import sla_maps, stastics_fig, update_figs_layout
+from figures import sla_maps, stastics_fig, update_figs_layout, sla_bar_chart, sla_indicator_chart
 from filters import Filters
 from shapely.geometry import Point
 import read_data
@@ -9,8 +8,8 @@ from polygons.polygons import calculate_polygons, check_if_pol_contains
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from stqdm import stqdm
-import time
-import plotly.graph_objects as go
+from queries import querie_builder
+from queries.all_queries import queries_constants
 
 st.set_page_config(layout='wide', page_title='mapas')
 def initialize_session_states():
@@ -20,22 +19,36 @@ def initialize_session_states():
         st.session_state.extra_selected_condo = []
     if 'grafico_vazio' not in st.session_state:
         st.session_state.grafico_vazio = []
+    if 'ALL_RESULTS' not in st.session_state:
+        st.session_state.ALL_RESULTS = None
 
-def start_app():
+def start_app(results):
+    if not results is None:
+        df_all_unit_services = pd.DataFrame(results.get('ALL_UNITS'))
+        df_sla_all_BU = df_all_unit_services.groupby('Unidade de Negócio - Nome').agg({'IEF':'mean', 'Matrícula':'count'}).reset_index()
+        st.data_editor(
+            data=df_sla_all_BU,
+            column_config={'IEF':st.column_config.ProgressColumn(min_value=0, max_value=100, label='SLA', format=f'{"%"}%.2f')},
+            hide_index=True
+        )
+        gauge_chart = sla_indicator_chart.gauge_sla_figure(df_sla_all_BU)
+        st.plotly_chart(gauge_chart, use_container_width=True)
+
     data = read_data.read_data('projeto_comgas.csv', sep=';')
     jardins_coordenadas = read_data.read_data('coordenadas_jardins.csv')
-    data['Ponto'] = list(zip(data['Latitude'], data['Longitude']))
-    data['Ponto'] = data['Ponto'].apply(lambda x: Point(x))
-    cp_data = data.copy()
+    df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
+    df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
+    cp_data = df_all_unit_services.copy()
 
-    agrupado_por_condo = data.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome']).agg({'IEF':'mean', 'Matrícula':'count', 'Latitude':'mean', 'Longitude':'mean'}).reset_index()
+    agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome']).agg({'IEF':'mean', 'Matrícula':'count', 'Latitude':'mean', 'Longitude':'mean'}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
     # grid_pontos_agrupados = GridBuilder(agrupado_por_condo, key='grid_pontos_agrupados')
     
+    st.markdown('---')
     st.subheader('Filtros')
     # tabela_agrupado, dados_agrupado = grid_pontos_agrupados.grid_builder()
     filtered_group = Filters(agrupado_por_condo)
-    filtered_data = Filters(data)
+    filtered_data = Filters(df_all_unit_services)
 
     c_BU, c_condo, c_cidade = st.columns(3)
     filtro_BU = c_BU.multiselect('Filtro de unidade de negócio', options=filtered_group.df['Unidade de Negócio - Nome'].unique())
@@ -105,7 +118,6 @@ def start_app():
             df_filtered_per_points.drop_duplicates(subset='Grupo - Nome', inplace=True, ignore_index=True)
             submit_gtw = st.form_submit_button('Submit')
             if submit_gtw: st.session_state.gtw_filters = True
-
     if st.session_state.gtw_filters:
         st.session_state.gtw_filters = False
         lat_list, lon_list = df_filtered_per_points['Latitude'].to_numpy(), df_filtered_per_points['Longitude'].to_numpy()
@@ -119,6 +131,8 @@ def start_app():
                 for n in stqdm(range(len(lat_list))):
                 # for idx, lat in enumerate(lat_list):
                     current_polygon, current_list_of_circles = list_of_polygons[n][0], list_of_polygons[n][1]
+                    print('Polígono de {}'.format(df_filtered_per_points.loc[n, 'Grupo - Nome']))
+                    print(current_polygon)
                     args = [(index, row[-1], current_polygon) for index, *row in filtered_data.df.itertuples()]
                     results = executor.map(check_if_pol_contains, args)
                     contained_index.extend([i for i in results if i is not None])
@@ -160,5 +174,18 @@ def start_app():
 if __name__ == '__main__':
     with open('style.css') as style:
         st.markdown(f'<style>{style.read()}</style>', unsafe_allow_html=True)
+
     initialize_session_states()
-    start_app()
+    queries_instancy = querie_builder.Queries()
+
+    if not queries_instancy.connection is None:
+        queries_instancy.add_queries(queries_constants)
+        # partial_run_queries = partial(queries_instancy.run_queries, query_commands=queries_instancy.all_queries_commands)
+        start_querie = st.button('Start queries', key='start_queries', type='primary')
+        if start_querie:
+            with st.spinner('Fazendo queries...'):
+                # with ThreadPoolExecutor(max_workers=4) as executor:
+                #     st.session_state.ALL_RESULTS = list(executor.map(queries_instancy.run_queries, [queries_instancy.all_queries_commands]))
+                st.session_state.ALL_RESULTS = queries_instancy.run_queries(queries_instancy.all_queries_commands)
+        st.success('Conexão com banco bem sucedida')
+        start_app(results=st.session_state.ALL_RESULTS)
