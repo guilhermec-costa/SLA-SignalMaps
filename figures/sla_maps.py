@@ -15,6 +15,7 @@ def add_traces_on_map(fig, another_data, name, fillcolor: str = 'rgba(255, 205, 
     fig.add_trace(go.Scattermapbox(lat=another_data['Latitude'], lon=another_data['Longitude'],
                                    mode='lines', line=dict(color=fillcolor), fill='toself', name=name))
 
+@st.cache_data
 def plot_sla_map(data_sla: pd.DataFrame, title: str, colmn_to_base_color = None, theme: str = 'streets', group_type: str = None):
     
     steps = [10,20,30,40,50,60,70,80,90,100]

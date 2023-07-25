@@ -35,3 +35,8 @@ button {
     -webkit-user-select: none;
     touch-action: manipulation;
     }
+
+.css-6qob1r {
+    background: rgb(32,56,107);
+    background: linear-gradient(180deg, rgba(32,56,107,1) 36%, rgba(73,128,245,1) 65%);
+}

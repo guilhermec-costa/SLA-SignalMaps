@@ -2,14 +2,16 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 from . import update_figs_layout
+import streamlit as st
 
+@st.cache_data
 def rssi_last_30days(data: pd.DataFrame):
     fig = go.Figure()
     color_list = px.colors.qualitative.G10
     for idx, business_unit in enumerate(data['name'].unique()):
         filtered_BU = data[data['name'] == business_unit]
 
-        fig.add_trace(go.Scatter(x=filtered_BU['date(dsl.created_at)'], y=filtered_BU['rssi_mean'], mode='lines+markers', line=dict(width=3, color=color_list[idx], shape='spline'),
+        fig.add_trace(go.Scatter(x=filtered_BU['snapshot_date'], y=filtered_BU['rssi_mean'], mode='lines+markers', line=dict(width=3, color=color_list[idx], shape='spline'),
                                 name=filtered_BU['name'].unique()[0]))
 
     fig.update_layout(title=dict(text='Average RSSI over the last 30 days', font=dict(size=26, family='roboto'), x=0.5, y=0.93, xanchor='center', yanchor='top'),

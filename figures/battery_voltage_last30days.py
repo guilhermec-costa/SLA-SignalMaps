@@ -2,16 +2,18 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 from . import update_figs_layout
+import streamlit as st
 
 
 
+@st.cache_data
 def battery_voltage(data: pd.DataFrame):
     fig = go.Figure()
     color_list = px.colors.qualitative.G10
     for idx, bu in enumerate(data['name'].unique()):
         filtered_bu = data[data['name']==bu]
 
-        fig.add_trace(go.Scatter(x=filtered_bu['date(dsl.created_at)'], y=filtered_bu['battery_voltage_mean'], mode='lines+markers',
+        fig.add_trace(go.Scatter(x=filtered_bu['snapshot_date'], y=filtered_bu['battery_voltage_mean'], mode='lines+markers',
                                  line=dict(width=2, color=color_list[idx], shape='spline'),
                                  name=filtered_bu['name'].unique()[0]))
     

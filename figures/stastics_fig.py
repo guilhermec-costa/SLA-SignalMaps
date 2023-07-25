@@ -1,5 +1,7 @@
 import plotly.express as px
+import streamlit as st
 
+@st.cache_data
 def analise_descritiva(data):
     map_colors = ['#5FE867', '#69FFF1', '#6B90E8', '#B469FF', '#F564A2', '#E89482', '#E8C36B']
     fig = px.bar(data, x='metricas', y='IEF', color='metricas', color_discrete_sequence=map_colors, text_auto=True)
