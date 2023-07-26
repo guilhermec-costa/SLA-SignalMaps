@@ -1,6 +1,5 @@
+# all available filters (dashboards)
 import streamlit as st
-import datetime
-import pytz
 import pandas as pd
 
 style_markdown_warning = """

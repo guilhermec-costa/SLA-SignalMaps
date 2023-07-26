@@ -3,6 +3,7 @@ import numpy as np
 from plotly.subplots import make_subplots
 import streamlit as st
 
+@st.cache_data
 def gauge_sla_figure(data):
     # specs: especificação dos tipos dos subplots, por LINHA
     fig = make_subplots(rows=1, cols=4,
@@ -32,15 +33,15 @@ def gauge_sla_figure(data):
 
                                                },
                                                'steps': [
-                                                   {'range':[0,35], 'color':'rgba(222, 73 60, 0.5)'},
-                                                   {'range': [35, 65], 'color': 'rgba(245, 214, 78, 0.5)'},
-                                                   {'range':[65, 100], 'color':'rgba(60, 222, 109, 0.5)'}
+                                                   {'range':[0,65], 'color':'rgba(222, 73 60, 0.7)'},
+                                                   {'range': [65, 85], 'color': 'rgba(245, 214, 78, 0.7)'},
+                                                   {'range':[85, 100], 'color':'rgba(60, 222, 109, 0.7)'}
                                                ]}), row=1, col=col_position)
 
     fig.update_annotations(y=-0.1, font=dict(family='roboto', size=18, color='lightgrey'))
     fig.update_layout(font=dict(family='roboto', size=16, color='lightgrey'),
-                      title=dict(text='SLA: todas as Unidades de Negócio', x=0.5, y=0.93, xanchor='center', yanchor='top',
-                                 font=dict(size=35,)))
+                      title=dict(text='SLA% last 24 hours', x=0.5, y=0.93, xanchor='center', yanchor='top',
+                                 font=dict(size=35, family='roboto')))
         
     return fig
     

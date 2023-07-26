@@ -1,0 +1,35 @@
+import streamlit as st
+from figures import sla_indicator_chart, sla_last_30days, rssi_last_30days, \
+    metrics_boxplot, battery_voltage_last30days, recent_reading
+from queries import querie_builder
+
+def sla_overview(results:querie_builder.Queries) -> None:
+    sla_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
+    df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
+    df_sla_all_BU = df_all_unit_services.groupby('Unidade de Negócio - Nome').agg({'IEF':'mean', 'Matrícula':'count'}).reset_index()
+    df_recent_readings = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='RECENT_READINGS')
+    st.header('SLA metrics')
+    st.markdown('###')
+    gauge_chart = sla_indicator_chart.gauge_sla_figure(df_sla_all_BU)
+    sla_30days = sla_last_30days.sla_last_30days(sla_data_30days)
+    rssi_30days = rssi_last_30days.rssi_last_30days(sla_data_30days)
+    boxplot_metrics = metrics_boxplot.metrics_boxplot(sla_data_30days)
+    battery_voltage30days = battery_voltage_last30days.battery_voltage(sla_data_30days)
+    st.plotly_chart(gauge_chart, use_container_width=True)
+    st.markdown('---')
+    st.header('Time Series Analysis')
+    st.markdown('---')
+    st.markdown('###')
+    sla_c, rssi_c = st.columns(2)
+    sla_c.plotly_chart(sla_30days, use_container_width=True)
+    rssi_c.plotly_chart(rssi_30days, use_container_width=True)
+    st.markdown('###')
+    st.markdown('###')
+    sla_c.plotly_chart(boxplot_metrics, use_container_width=True)
+    rssi_c.plotly_chart(battery_voltage30days, use_container_width=True)
+    st.markdown('---')
+    st.header('Daily Readings Analysis')
+    st.markdown('---')
+    st.markdown('###')
+    recent_readings_fig = recent_reading.recent_reading(data=df_recent_readings)
+    st.plotly_chart(recent_readings_fig, use_container_width=True)
