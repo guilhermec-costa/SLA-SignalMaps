@@ -7,6 +7,5 @@ streamlit-aggrid==0.3.3
 lxml==4.9.3
 geopy==2.3.0
 shapely==2.0.1
-mysqlclient==2.2.0
 SQLAlchemy==2.0.19
 stqdm==0.0.5
