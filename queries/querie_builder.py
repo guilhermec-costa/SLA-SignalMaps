@@ -27,6 +27,7 @@ class Queries:
     def run_queries(_self, query_commands):
         for query_name_index, query in enumerate(query_commands):
             _self.results[_self.all_queries_names[query_name_index]] = _self.connection.query(sql=query, params={'name':'Business Unit'})
+        return _self.results
 
     def verify_connection(self) -> Union[str, bool]:
         return 'success' if self.connection is not None else False

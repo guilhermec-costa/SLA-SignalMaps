@@ -33,9 +33,9 @@ def gauge_sla_figure(data):
 
                                                },
                                                'steps': [
-                                                   {'range':[0,65], 'color':'rgba(222, 73 60, 0.7)'},
-                                                   {'range': [65, 85], 'color': 'rgba(245, 214, 78, 0.7)'},
-                                                   {'range':[85, 100], 'color':'rgba(60, 222, 109, 0.7)'}
+                                                   {'range':[0,65], 'color':'rgba(245, 17, 19, 0.6)'},
+                                                   {'range': [65, 85], 'color': 'rgba(245, 193, 5, 0.6)'},
+                                                   {'range':[85, 100], 'color':'rgba(29, 245, 89, 0.6)'}
                                                ]}), row=1, col=col_position)
 
     fig.update_annotations(y=-0.1, font=dict(family='roboto', size=18, color='lightgrey'))

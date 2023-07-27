@@ -9,7 +9,7 @@ import streamlit as st
 @st.cache_data
 def battery_voltage(data: pd.DataFrame):
     fig = go.Figure()
-    color_list = px.colors.qualitative.G10
+    color_list = ['#C47EF2', '#4EF2F2', '#F28A4E', '#DDF25A']
     for idx, bu in enumerate(data['name'].unique()):
         filtered_bu = data[data['name']==bu]
 
@@ -25,5 +25,6 @@ def battery_voltage(data: pd.DataFrame):
     fig.update_yaxes(title=None, tickfont=dict(family='roboto', size=14), ticksuffix='V')
 
     update_figs_layout.alter_hover(fig=fig, mode='x unified')
+    update_figs_layout.alter_legend(fig=fig, title='Metrics')
         
     return fig
