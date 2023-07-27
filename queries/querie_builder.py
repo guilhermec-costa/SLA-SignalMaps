@@ -1,7 +1,7 @@
 import streamlit as st
 from typing import Union, List
 import pandas as pd
-    
+
 class Queries:
     def __init__(self, name:str) -> None:
         self.all_queries_commands = []
@@ -42,5 +42,6 @@ class Connection:
             return st.experimental_connection(name='mysql', ttl=1200, type='sql')
         except Exception:
             st.error('Failed to connect to database.')
+            raise
             return None
         
