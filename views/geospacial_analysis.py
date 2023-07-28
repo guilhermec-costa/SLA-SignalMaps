@@ -1,6 +1,6 @@
 # geospacial analysis code
 import streamlit as st
-from queries import querie_builder
+from queries import querie_builder, data_treatement
 from shapely import Point
 from filters import Filters
 from figures import sla_maps, stastics_fig
@@ -12,15 +12,15 @@ import pandas as pd
 from figures import update_figs_layout
 import session_states
 
-@st.cache_data
-def read_data(name:str, sep: str = ',') -> pd.DataFrame:
-    return pd.read_csv(name, sep=sep)
+@st.cache_data()
+def tmp_coordinates(tmp_lats, tmp_longs):
+    return pd.DataFrame(data={'Latitude':tmp_lats, 'Longitude':tmp_longs})
 
 def geo_analysis(results: querie_builder.Queries):
-    session_states.initialize_session_states([('gtw_filters', False), ('extra_selected_condo', []), ('grafico_vazio', []), ('ALL_RESULTS', None)])
-    print('Session states: ', st.session_state.gtw_filters)
+    session_states.initialize_session_states([('gtw_filters', False), ('extra_selected_condo', []), ('grafico_vazio', []), ('ALL_RESULTS', None),
+                                              ('polygon_df', pd.DataFrame())])
     df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
-    jardins_coordenadas = read_data('coordenadas_jardins.csv')
+    jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
     cp_data = df_all_unit_services.copy()
@@ -124,11 +124,11 @@ def geo_analysis(results: querie_builder.Queries):
                     temporary_lats = [tuple_of_coords[0] for tuple_of_coords in current_list_of_circles]
                     temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
 
-                    poligon_df = pd.DataFrame(data={'Latitude':temporary_lats, 'Longitude':temporary_longs})
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=poligon_df, fillcolor='rgba(100, 220, 245, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=poligon_df, fillcolor='rgba(100, 220, 245, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])                 
-                    sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=poligon_df, fillcolor='rgba(100, 220, 245, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
-        
+                    st.session_state.polygon_df = tmp_coordinates(temporary_lats, temporary_longs)
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=st.session_state.polygon_df, fillcolor='rgba(100, 220, 245, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=st.session_state.polygon_df, fillcolor='rgba(100, 220, 245, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])                 
+                    sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=st.session_state.polygon_df, fillcolor='rgba(100, 220, 245, 0.2)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
+
         affected_points = cp_data.loc[contained_index]
         qty_that_is_contained = affected_points.shape[0]
         points_metrics, sla_metrics, sla_prevision = st.columns(3)
