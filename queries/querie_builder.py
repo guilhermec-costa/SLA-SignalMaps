@@ -33,7 +33,7 @@ class Queries:
         return 'success' if self.connection is not None else False
     
     @st.cache_data
-    def load_imporant_data(queries_responses:dict, specific_response:str) -> List[pd.DataFrame]:
+    def load_imporant_data(queries_responses, specific_response:str) -> pd.DataFrame:
         return pd.DataFrame(queries_responses.get(specific_response))
 
 class Connection:
