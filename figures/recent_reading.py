@@ -5,7 +5,7 @@ from . import update_figs_layout
 
 @st.cache_data
 def recent_reading(data):
-    fig = make_subplots(rows=2, cols=2, vertical_spacing=0.4, print_grid=True,
+    fig = make_subplots(rows=1, cols=3, vertical_spacing=0.4, print_grid=True,
                         subplot_titles=tuple(bu for bu in data['name'].unique()))
 
     col_pos, row_pos = 1, 1
@@ -24,12 +24,13 @@ def recent_reading(data):
         fig.update_xaxes(showgrid=True, griddash='solid', gridcolor='rgba(211, 211, 211, 0.2)', tickfont=dict(size=16, family='roboto'), tickangle=25)
         fig.update_yaxes(title=dict(text=None, font=dict(family='roboto', size=18)), tickfont=dict(family='roboto', size=14))
         fig.update_layout(height=650)
+        col_pos += 1
         
 
-        col_pos += 1
-        if col_pos > 2:
-            col_pos = 1
-            row_pos += 1
+        # col_pos += 1
+        # if col_pos > 2:
+        #     col_pos = 1
+        #     row_pos += 1
     
     fig.update_layout(font=dict(family='roboto'),
                       legend=dict(

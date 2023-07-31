@@ -7,7 +7,9 @@ streamlit-aggrid==0.3.3
 lxml==4.9.3
 geopy==2.3.0
 shapely==2.0.1
+mysqlclient==2.1.1
 SQLAlchemy==2.0.19
 stqdm==0.0.5
 streamlit-option-menu==0.3.6
 rembg==2.0.50
+mariadb==1.1.7

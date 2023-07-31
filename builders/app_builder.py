@@ -7,6 +7,8 @@ from views import main_sidebar
 import importlib
 
 class App:
+
+
     def __init__(self, name) -> None:
         self.app_name = name
 
