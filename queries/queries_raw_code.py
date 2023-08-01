@@ -36,7 +36,7 @@ INNER JOIN business_units bu
 	ON bu.id = cs.business_unit_id
 INNER JOIN companies c
 	ON c.id = bu.company_id
-WHERE c.id = 38 AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int BETWEEN date(now()) - INTERVAL '30' DAY AND date(now()) + INTERVAL '24' HOUR
+WHERE c.id = 38 AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int BETWEEN 20230521 AND date(now()) + INTERVAL '24' HOUR
 GROUP BY date(dsl.snapshot_date_int), bu.name
 ORDER BY date(dsl.snapshot_date_int) ASC;
 """

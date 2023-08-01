@@ -43,6 +43,5 @@ class Connection:
             return st.experimental_connection(name='mysql', ttl=1200, type='sql')
         except Exception:
             st.error('Failed to connect to database.')
-            raise
             return None
         

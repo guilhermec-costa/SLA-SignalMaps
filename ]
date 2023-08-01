@@ -125,7 +125,7 @@ def geo_analysis(results: querie_builder.Queries):
                     temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
 
                     st.session_state.polygon_df = tmp_coordinates(temporary_lats, temporary_longs)
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=st.session_state.polygon_df, fillcolor='rgba(100, 220, 245, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
                     sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])                 
                     sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
         affected_points = cp_data.loc[contained_index]
