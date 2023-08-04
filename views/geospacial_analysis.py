@@ -1,5 +1,6 @@
 # geospacial analysis code
 import streamlit as st
+import datetime
 from queries import querie_builder, data_treatement
 from shapely import Point
 from filters import Filters
@@ -10,6 +11,7 @@ from stqdm import stqdm
 from polygons import polygons
 import pandas as pd
 from figures import update_figs_layout
+from queries import queries_raw_code
 import session_states
 
 @st.cache_data()
@@ -25,7 +27,7 @@ def geo_analysis(results: querie_builder.Queries):
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
     cp_data = df_all_unit_services.copy()
 
-    agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome']).agg({'IEF':'mean', 'Matrícula':'count', 'Latitude':'mean', 'Longitude':'mean'}).reset_index()
+    agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
     
     st.markdown('---')
@@ -33,26 +35,40 @@ def geo_analysis(results: querie_builder.Queries):
     filtered_group = Filters(agrupado_por_condo)
     filtered_data = Filters(df_all_unit_services)
 
-    c_BU, c_condo, c_cidade = st.columns(3)
-    filtro_BU = c_BU.multiselect('Business Unit', options=filtered_group.df['Unidade de Negócio - Nome'].unique())
-    filtered_group.validate_filter('general_filter', filtro_BU, refer_column='Unidade de Negócio - Nome')
-    filtro_condo = c_condo.multiselect('Residence name', options=filtered_group.df['Grupo - Nome'].unique())
-    filtered_group.validate_filter('general_filter', filtro_condo, refer_column='Grupo - Nome')
-    filtro_cidade = c_cidade.multiselect('City', options=filtered_group.df['Cidade - Nome'].unique())
-    filtered_group.validate_filter('general_filter', filtro_cidade, refer_column='Cidade - Nome')
+    with st.form(key='submit_sla_form'):
+        c_BU, c_condo, c_cidade = st.columns(3)
+        filtro_BU = c_BU.multiselect('Business Unit', options=filtered_group.df['Unidade de Negócio - Nome'].unique())
+        filtered_group.validate_filter('general_filter', filtro_BU, refer_column='Unidade de Negócio - Nome')
+        filtro_condo = c_condo.multiselect('Residence name', options=filtered_group.df['Endereço'].unique())
+        filtered_group.validate_filter('general_filter', filtro_condo, refer_column='Endereço')
+        filtro_cidade = c_cidade.multiselect('City', options=filtered_group.df['Cidade - Nome'].unique())
+        filtered_group.validate_filter('general_filter', filtro_cidade, refer_column='Cidade - Nome')
 
-    c_num_min, c_num_max = st.columns(2)
-    min_pontos = c_num_min.number_input('Min number of installations:', min_value=int(filtered_group.df['Matrícula'].min()) - 1, max_value=int(filtered_group.df['Matrícula'].max()), value=int(filtered_group.df['Matrícula'].min()) - 1)
-    max_pontos = c_num_max.number_input('Max number of installations:', min_value=int(filtered_group.df['Matrícula'].min()) - 1, max_value=int(filtered_group.df['Matrícula'].max()), value=int(filtered_group.df['Matrícula'].max()))
-    min_sla_condo, max_sla_condo = c_num_min.slider('SLA por condomínio', min_value=0.0, max_value=100.0, value=[float(filtered_group.df.IEF.min()),float(filtered_group.df.IEF.max())], step=5.0)
-    min_sla_pontos, max_sla_pontos = c_num_max.slider('SLA por instalação', min_value=0.0, max_value=100.0, value=[float(filtered_data.df.IEF.min()),float(filtered_data.df.IEF.max())], step=5.0, key='sla_slider_pontos')
-   
+        c_num_min, c_num_max, c_status_date = st.columns(3)
+        min_pontos = c_num_min.number_input('Min number of installations:', min_value=int(filtered_group.df['Matrícula'].min()) - 1, max_value=int(filtered_group.df['Matrícula'].max()), value=int(filtered_group.df['Matrícula'].min()) - 1)
+        max_pontos = c_num_max.number_input('Max number of installations:', min_value=int(filtered_group.df['Matrícula'].min()) - 1, max_value=int(filtered_group.df['Matrícula'].max()), value=int(filtered_group.df['Matrícula'].max()))
+
+        status_date = c_status_date.date_input('Day of the status', value=datetime.datetime.today(), max_value=datetime.datetime.today() + datetime.timedelta(days=1))
+        min_sla_condo, max_sla_condo = c_num_min.slider('SLA por condomínio', min_value=0.0, max_value=100.0, value=[float(filtered_group.df.IEF.min()),float(filtered_group.df.IEF.max())], step=5.0)
+        min_sla_pontos, max_sla_pontos = c_num_max.slider('SLA por instalação', min_value=0.0, max_value=100.0, value=[float(filtered_data.df.IEF.min()),float(filtered_data.df.IEF.max())], step=5.0, key='sla_slider_pontos')
+        submit_form = st.form_submit_button('Submit the form')
+        if submit_form:
+            tmp_connection = querie_builder.Queries(name='temporary_queries')
+            new_query = queries_raw_code.all_units_info(status_date)
+            new_query_result = pd.DataFrame(tmp_connection.run_single_query(command=new_query))
+            filtered_data.df = new_query_result
+            filtered_group.df = new_query_result.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
+
+
+
+            
+       
     filtered_group.df = filtered_group.df[(filtered_group.df['Matrícula'] >= min_pontos) &
                                 (filtered_group.df['Matrícula'] <= max_pontos) &
                                 (filtered_group.df['IEF'] >= min_sla_condo) & (filtered_group.df['IEF'] <= max_sla_condo)]
 
     filtered_data.general_filter(refer_column='Unidade de Negócio - Nome', opcs=filtered_group.df['Unidade de Negócio - Nome'])
-    filtered_data.general_filter(refer_column='Grupo - Nome', opcs=filtered_group.df['Grupo - Nome'])
+    filtered_data.general_filter(refer_column='Endereço', opcs=filtered_group.df['Endereço'])
     filtered_data.general_filter(refer_column='Cidade - Nome', opcs=filtered_group.df['Cidade - Nome'])
     filtered_data.general_qty_filter(min_sla_pontos, max_sla_pontos, 'IEF')
     
@@ -94,15 +110,19 @@ def geo_analysis(results: querie_builder.Queries):
         with st.form('gtw_form'):
             gtw_number, gtw_range = st.columns(2)
             qty_of_gtw = gtw_number.number_input('Distribute some gateways: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
-            st.session_state.extra_selected_condo = gtw_number.multiselect('Or choose any address', options=filtered_group.df['Grupo - Nome'].unique())
-            personalized_gtw = filtered_group.df[filtered_group.df['Grupo - Nome'].isin(st.session_state.extra_selected_condo)]
-            gtw_range = gtw_range.number_input('Gateway range in meters: ', min_value=1, value=1500)
+            st.session_state.extra_selected_condo = gtw_number.multiselect('Or choose any address', options=filtered_group.df['Endereço'].unique())
+            personalized_gtw = filtered_group.df[filtered_group.df['Endereço'].isin(st.session_state.extra_selected_condo)]
+            gtw_range = gtw_range.number_input('Gateway range in meters: ', min_value=1, value=1000)
 
             df_filtered_per_points = filtered_group.df.sort_values(by='Pontos instalados', ascending=False).iloc[:int(qty_of_gtw), :].reset_index()
             df_filtered_per_points = pd.concat([df_filtered_per_points, personalized_gtw.reset_index()], ignore_index=True)
-            df_filtered_per_points.drop_duplicates(subset='Grupo - Nome', inplace=True, ignore_index=True)
+            df_filtered_per_points.sort_values(by='Pontos instalados', ascending=False, ignore_index=True, inplace=True)
+            df_filtered_per_points.drop_duplicates(subset='Endereço', inplace=True, ignore_index=True, keep='first')
             submit_gtw = st.form_submit_button('Start calculations')
+            st.subheader('Ordem de prioridade para instalação de gateways')
+            st.write(df_filtered_per_points)
             if submit_gtw: st.session_state.gtw_filters = True
+                            
 
     if st.session_state.gtw_filters:
         st.session_state.gtw_filters = False
@@ -125,21 +145,24 @@ def geo_analysis(results: querie_builder.Queries):
                     temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
 
                     st.session_state.polygon_df = tmp_coordinates(temporary_lats, temporary_longs)
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
-                    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])                 
-                    sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Grupo - Nome'].values[0])
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_ponto, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Endereço'].values[0])
+                    sla_maps.add_traces_on_map(mapa_agrupado_por_sla, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Endereço'].values[0])                 
+                    sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=st.session_state.polygon_df, fillcolor='rgba(59, 49, 255, 0.4)', name=df_filtered_per_points.loc[n:n, 'Endereço'].values[0])
+        
         affected_points = cp_data.loc[contained_index]
         qty_that_is_contained = affected_points.shape[0]
-        points_metrics, sla_metrics, sla_prevision = st.columns(3)
+        points_metrics, choosed_gtw_qtd, sla_metrics, sla_prevision = st.columns(4)
+        
         if df_filtered_per_points.shape[0] >= 1:
             mean_sla_affecteds = round(affected_points['IEF'].mean(), 2)
             points_metrics.metric(f'Affected points', value=f'{qty_that_is_contained} pontos')
+            choosed_gtw_qtd.metric('Quantity of gateways: ', value=f'{len(lat_list)} gateways')
             sla_metrics.metric(f'Filtered SLA %', value=mean_sla_affecteds)
             sla_prevision.metric('Improvement preview over the general SLA %', value=f'{round(qty_that_is_contained / cp_data.shape[0] * 100, 2)}%')
 
             with st.expander('Addresses and installations affected'):
                 st.write(affected_points)
-                st.write(agrupado_por_condo[agrupado_por_condo['Grupo - Nome'].isin(affected_points['Grupo - Nome'].unique())])
+                st.write(agrupado_por_condo[agrupado_por_condo['Endereço'].isin(affected_points['Endereço'].unique())].sort_values(by='Matrícula', ascending=False))
 
     theme_position, *_ = st.columns(5)
     theme_options = ['streets', 'open-street-map', 'satellite', 'satellite-streets', 'carto-positron', 'carto-darkmatter', 'dark', 'stamen-terrain', 'stamen-toner',

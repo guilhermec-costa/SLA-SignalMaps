@@ -1,5 +1,6 @@
 import plotly.express as px
 import streamlit as st
+from . import update_figs_layout
 
 @st.cache_data
 def analise_descritiva(data):
@@ -11,4 +12,6 @@ def analise_descritiva(data):
     fig.update_xaxes(title=dict(text='Metrics', font=dict(size=18, family='roboto')), showticklabels=True, tickfont=dict(size=16, family='roboto'), showline=True, linewidth=1)
     fig.update_yaxes(title=dict(text='SLA', font=dict(size=18, family='roboto')), showticklabels=True, tickfont=dict(size=16, family='roboto'), showline=True, linewidth=1,
                      gridcolor='rgba(222, 223, 222, 0.1)')
+
+    update_figs_layout.alter_hover(fig=fig)
     return fig
