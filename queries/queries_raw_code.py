@@ -1,9 +1,14 @@
 import datetime
-
+from typing import List
 from streamlit.elements.time_widgets import DateWidgetReturn
 
-def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date()) -> str:
+def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
+                   bussiness_unts:List[str] = ['Inst. Comgás', 'Comgás - Instalações 2022', 'Comgás - Instalações 2023', 'Homologação LAB COMGÁS'], residences:List[str] = ['test'], cities:List[str] = ['SAO PAULO']) -> str:
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
+    conv_busn_unts = ','.join(tuple(f"'{busn_unts}'" for busn_unts in bussiness_unts))
+    conv_cities = ','.join(tuple(f"'{city}'" for city in cities))
+
+    print(conv_date, conv_busn_unts)
     ALL_UNITS = """
     SELECT dsl.module_id, r.rgi "Matrícula", m.serial_number, devc.pac "deveui",
             devc.serial_number "serial number", bu.name "Unidade de Negócio - Nome", c.name "Cidade - Nome", cs.name "Grupo - Nome",
@@ -24,9 +29,9 @@ def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date()) 
             ON (m.residence_id = r.id)
     INNER JOIN devices devc
             ON (devc.meter_id = m.id)
-    WHERE comp.id = 38 AND r.status = 'ACTIVATED'
+    WHERE bu.name IN ({}) AND r.status = 'ACTIVATED' AND c.name IN ({})
     AND dsl.snapshot_date_int =  {}
-    """.format(conv_date)
+    """.format(conv_busn_unts, conv_cities, conv_date)
     return ALL_UNITS
 
 SLA_OVER_TIME_ALL_UNITS = """
