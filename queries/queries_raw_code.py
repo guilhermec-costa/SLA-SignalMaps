@@ -1,9 +1,70 @@
 import datetime
 from typing import List
 from streamlit.elements.time_widgets import DateWidgetReturn
+from . import querie_builder
+import streamlit as st
+
+# st.set_page_config(layout='wide')
+# def all_cities():
+#     tpm_conn = querie_builder.Queries(name='cities')
+#     return list(tpm_conn.run_single_query(command='SELECT name FROM cities c WHERE company_id = 38;'))
+
+cidades = [
+    "SAO JOSÉ DOS CAMPOS",
+    "GUARULHOS",
+    "INDAIATUBA",
+    "JACAREÍ",
+    "OSASCO",
+    "SANTANA DE PARNAIBA",
+    "SUZANO",
+    "FERRAZ DE VASCONCELOS",
+    "TABOAO DA SERRA",
+    "SAO PAULO",
+    "BRAGANCA PAULISTA",
+    "TAUBATE",
+    "LORENA",
+    "COTIA",
+    "COTIA",
+    "LIMEIRA",
+    "MAUA",
+    "SAO VICENTE",
+    "SANTA BARBARA DOESTE",
+    "VALINHOS",
+    "ITAQUAQUECETUBA",
+    "HORTOLANDIA",
+    "PAULINIA",
+    "SANTOS",
+    "JANDIRA",
+    "JACAREI",
+    "ITUPEVA",
+    "RIO CLARO",
+    "RIBEIRAO PIRES",
+    "SUMARE",
+    "ITATIBA",
+    "POA",
+    "CACAPAVA",
+    "MONTE MOR",
+    "CAJAMAR",
+    "SAO BERNARDO DO CAMPO",
+    "SAO CAETANO DO SUL",
+    "EMBU DAS ARTES",
+    "JUNDIAI",
+    "SANTO ANDRE",
+    "DIADEMA",
+    "MOGI DAS CRUZES",
+    "CAMPOS DO JORDAO",
+    "CAMPINAS",
+    "SAO JOSE DOS CAMPOS",
+    "AMERICANA",
+    "TAU",
+    "SAO PAULO",
+    "LORENA",
+    "CAMPOS DO JORDAO"
+]
+
 
 def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
-                   bussiness_unts:List[str] = ['Inst. Comgás', 'Comgás - Instalações 2022', 'Comgás - Instalações 2023', 'Homologação LAB COMGÁS'], residences:List[str] = ['test'], cities:List[str] = ['SAO PAULO']) -> str:
+                   bussiness_unts:List[str] = ['Inst. Comgás', 'Comgás - Instalações 2022', 'Comgás - Instalações 2023', 'Homologação LAB COMGÁS'], residences:List[str] = ['test'], cities:List[str] = cidades) -> str:
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
     conv_busn_unts = ','.join(tuple(f"'{busn_unts}'" for busn_unts in bussiness_unts))
     conv_cities = ','.join(tuple(f"'{city}'" for city in cities))

@@ -5,9 +5,9 @@ from figures import sla_indicator_chart, sla_last_30days, rssi_last_30days, tran
 from queries import querie_builder, data_treatement
 from datetime import datetime
 
-def sla_overview(results:querie_builder.Queries) -> None:
+def sla_overview(results:querie_builder.Queries, main_data) -> None:
     metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
-    df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
+    df_all_unit_services = main_data
     df_recent_readings = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='RECENT_READINGS')
     df_daily_transmissions = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='DAILY_TRANSMISSIONS')
     df_daily_transmissions.snapshot_date = df_daily_transmissions.snapshot_date.apply(lambda x: datetime.strptime(x, '%d/%m/%Y').date())

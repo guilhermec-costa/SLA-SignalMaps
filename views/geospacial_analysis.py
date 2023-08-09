@@ -18,10 +18,10 @@ import session_states
 def tmp_coordinates(tmp_lats, tmp_longs):
     return pd.DataFrame(data={'Latitude':tmp_lats, 'Longitude':tmp_longs})
     
-def geo_analysis(results: querie_builder.Queries):
+def geo_analysis(results: querie_builder.Queries, main_data):
     session_states.initialize_session_states([('gtw_filters', False), ('extra_selected_condo', []), ('grafico_vazio', []), ('ALL_RESULTS', None),
                                               ('polygon_df', pd.DataFrame()), ('city_filter', []), ('residence_filter', [])])
-    df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
+    df_all_unit_services = main_data
     jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
@@ -52,8 +52,7 @@ def geo_analysis(results: querie_builder.Queries):
         submit_form = st.form_submit_button('Submit the form')
         if submit_form:
             tmp_connection = querie_builder.Queries(name='temporary_queries')
-            new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter)
-            st.write(new_query)
+                new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter)
             new_query_result = pd.DataFrame(tmp_connection.run_single_query(command=new_query))
             filtered_data.df = new_query_result
             filtered_data.general_qty_filter(min_sla_pontos, max_sla_pontos, 'IEF')
