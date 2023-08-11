@@ -18,10 +18,10 @@ import session_states
 def tmp_coordinates(tmp_lats, tmp_longs):
     return pd.DataFrame(data={'Latitude':tmp_lats, 'Longitude':tmp_longs})
     
-def geo_analysis(results: querie_builder.Queries, main_data):
+def geo_analysis(results: querie_builder.Queries, main_data=None):
     session_states.initialize_session_states([('gtw_filters', False), ('extra_selected_condo', []), ('grafico_vazio', []), ('ALL_RESULTS', None),
                                               ('polygon_df', pd.DataFrame()), ('city_filter', []), ('residence_filter', [])])
-    df_all_unit_services = main_data
+    df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
     jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
@@ -52,7 +52,7 @@ def geo_analysis(results: querie_builder.Queries, main_data):
         submit_form = st.form_submit_button('Submit the form')
         if submit_form:
             tmp_connection = querie_builder.Queries(name='temporary_queries')
-                new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter)
+            new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter)
             new_query_result = pd.DataFrame(tmp_connection.run_single_query(command=new_query))
             filtered_data.df = new_query_result
             filtered_data.general_qty_filter(min_sla_pontos, max_sla_pontos, 'IEF')
@@ -96,7 +96,7 @@ def geo_analysis(results: querie_builder.Queries, main_data):
                         help=f'Total of installations: {cp_data.shape[0]}')
     sla_filtrado.metric('Filtered SLA %', value=f'{round(np.mean(filtered_data.df.IEF), 2)}%')
     st.markdown('---')
-
+    
     st.session_state.grafico_vazio = sla_maps.plot_sla_map(filtered_data.df, title='SLA % per installation', colmn_to_base_color='IEF', theme='streets', group_type='IEF')
     sla_maps.add_traces_on_map(st.session_state.grafico_vazio, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
     mapa_agrupado_por_ponto = sla_maps.plot_sla_map(filtered_group.df, title=f'Installations per address', theme='streets', group_type='Pontos instalados',
@@ -172,7 +172,7 @@ def geo_analysis(results: querie_builder.Queries, main_data):
                 st.write(agrupado_por_condo[agrupado_por_condo['Endereço'].isin(affected_points['Endereço'].unique())].sort_values(by='Matrícula', ascending=False))
 
     theme_position, *_ = st.columns(5)
-    theme_options = ['streets', 'open-street-map', 'satellite', 'satellite-streets', 'carto-positron', 'carto-darkmatter', 'dark', 'stamen-terrain', 'stamen-toner',
+    theme_options = ['satellite-streets', 'open-street-map', 'satellite', 'streets', 'carto-positron', 'carto-darkmatter', 'dark', 'stamen-terrain', 'stamen-toner',
                         'stamen-watercolor', 'basic', 'outdoors', 'light', 'white-bg']
     choosed_theme = theme_position.selectbox('Choose any theme', options=theme_options, index=0)
     update_figs_layout.update_fig_layouts([mapa_agrupado_por_ponto, mapa_agrupado_por_sla, st.session_state.grafico_vazio], theme=choosed_theme)

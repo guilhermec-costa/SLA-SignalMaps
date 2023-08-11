@@ -4,10 +4,7 @@ from streamlit.elements.time_widgets import DateWidgetReturn
 from . import querie_builder
 import streamlit as st
 
-# st.set_page_config(layout='wide')
-# def all_cities():
-#     tpm_conn = querie_builder.Queries(name='cities')
-#     return list(tpm_conn.run_single_query(command='SELECT name FROM cities c WHERE company_id = 38;'))
+
 
 cidades = [
     "SAO JOSÉ DOS CAMPOS",
@@ -62,14 +59,18 @@ cidades = [
     "CAMPOS DO JORDAO"
 ]
 
+BUS = [
+    'Inst. Comgás', 'Comgás - Instalações 2023',
+    'Comgás - Instalações 2022', 'Homologação LAB COMGÁS'
+]
+
 
 def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
                    bussiness_unts:List[str] = ['Inst. Comgás', 'Comgás - Instalações 2022', 'Comgás - Instalações 2023', 'Homologação LAB COMGÁS'], residences:List[str] = ['test'], cities:List[str] = cidades) -> str:
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
-    conv_busn_unts = ','.join(tuple(f"'{busn_unts}'" for busn_unts in bussiness_unts))
-    conv_cities = ','.join(tuple(f"'{city}'" for city in cities))
+    conv_busn_unts = ','.join(tuple(f"'{busn_unt}'" for busn_unt in BUS)) if bussiness_unts == [] else ','.join(tuple(f"'{bu}'" for bu in bussiness_unts))
+    conv_cities = ','.join(f"'{city}'" for city in cidades) if cities == [] else ','.join(tuple(f"'{city}'" for city in cities))
 
-    print(conv_date, conv_busn_unts)
     ALL_UNITS = """
     SELECT dsl.module_id, r.rgi "Matrícula", m.serial_number, devc.pac "deveui",
             devc.serial_number "serial number", bu.name "Unidade de Negócio - Nome", c.name "Cidade - Nome", cs.name "Grupo - Nome",
