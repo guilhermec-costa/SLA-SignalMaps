@@ -1,16 +1,15 @@
-# geospacial analysis code
+# geospacial nalysis code
 import streamlit as st
 import datetime
 from queries import querie_builder, data_treatement
 from shapely import Point
 from filters import Filters
-from figures import sla_maps, stastics_fig
+from figures import individual_comparison, sla_maps, stastics_fig, update_figs_layout
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from stqdm import stqdm
 from polygons import polygons
 import pandas as pd
-from figures import update_figs_layout
 from queries import queries_raw_code
 import session_states
 
@@ -19,15 +18,17 @@ def tmp_coordinates(tmp_lats, tmp_longs):
     return pd.DataFrame(data={'Latitude':tmp_lats, 'Longitude':tmp_longs})
     
 def geo_analysis(results: querie_builder.Queries, main_data=None):
-    session_states.initialize_session_states([('gtw_filters', False), ('extra_selected_condo', []), ('grafico_vazio', []), ('ALL_RESULTS', None),
-                                              ('polygon_df', pd.DataFrame()), ('city_filter', []), ('residence_filter', [])])
+    tmp_connection = querie_builder.Queries(name='temporary_queries')
+
+    session_states.initialize_session_states([('gtw_filters', False), ('extra_selected_condo', []), ('extra_selected_residence', []), ('grafico_vazio', []), ('ALL_RESULTS', None),
+                                              ('polygon_df', pd.DataFrame()), ('city_filter', []), ('address_filter', []), ('residence_filter', [])])
     df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
     jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
     cp_data = df_all_unit_services.copy()
 
-    agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
+    agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
     
     st.markdown('---')
@@ -51,13 +52,12 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
         min_sla_pontos, max_sla_pontos = c_num_max.slider('SLA por instalação', min_value=0.0, max_value=100.0, value=[float(filtered_data.df.IEF.min()),float(filtered_data.df.IEF.max())], step=5.0, key='sla_slider_pontos')
         submit_form = st.form_submit_button('Submit the form')
         if submit_form:
-            tmp_connection = querie_builder.Queries(name='temporary_queries')
             new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter)
             new_query_result = pd.DataFrame(tmp_connection.run_single_query(command=new_query))
             filtered_data.df = new_query_result
             filtered_data.general_qty_filter(min_sla_pontos, max_sla_pontos, 'IEF')
             filtered_data.validate_filter('general_filter', st.session_state.city_filter, refer_column='Cidade - Nome')
-            agrupado_por_condo = filtered_data.df.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean, 'data snapshot':np.max}).reset_index()
+            agrupado_por_condo = filtered_data.df.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean, 'data snapshot':np.max}).reset_index()
             agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
             filtered_group = Filters(agrupado_por_condo)
             filtered_group.validate_filter('general_filter', filtro_BU, refer_column='Unidade de Negócio - Nome')
@@ -66,16 +66,17 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
     filtered_group.df = filtered_group.df[(filtered_group.df['Matrícula'] >= min_pontos) &
                                 (filtered_group.df['Matrícula'] <= max_pontos) &
                                 (filtered_group.df['IEF'] >= min_sla_condo) & (filtered_group.df['IEF'] <= max_sla_condo)]
-    c_condo, c_cidade = st.columns(2)
-    st.session_state.residence_filter = c_condo.multiselect('Residence name', options=filtered_group.df['Endereço'].unique())
-    filtered_group.validate_filter('general_filter', st.session_state.residence_filter, refer_column='Endereço')
 
-
-        
+    c_address, c_group = st.columns(2)
+    st.session_state.address_filter = c_address.multiselect('Address name', options=filtered_group.df['Endereço'].unique())
+    filtered_group.validate_filter('general_filter', st.session_state.address_filter, refer_column='Endereço')
+    st.session_state.residence_filter = c_group.multiselect('Residence name', options=filtered_group.df['Grupo - Nome'].unique())
+    filtered_group.validate_filter('general_filter', st.session_state.residence_filter, refer_column='Grupo - Nome')
 
 
     filtered_data.general_filter(refer_column='Unidade de Negócio - Nome', opcs=filtered_group.df['Unidade de Negócio - Nome'])
     filtered_data.general_filter(refer_column='Endereço', opcs=filtered_group.df['Endereço'])
+    filtered_data.general_filter(refer_column='Grupo - Nome', opcs=filtered_group.df['Grupo - Nome'])
     filtered_data.general_filter(refer_column='Cidade - Nome', opcs=filtered_group.df['Cidade - Nome'])
     
     
@@ -115,11 +116,14 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
     st.subheader('Gateways analysis')
     with st.expander('Edit gateway options'):
         with st.form('gtw_form'):
-            gtw_number, gtw_range = st.columns(2)
-            qty_of_gtw = gtw_number.number_input('Distribute some gateways: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
-            st.session_state.extra_selected_condo = gtw_number.multiselect('Or choose any address', options=filtered_group.df['Endereço'].unique())
-            personalized_gtw = filtered_group.df[filtered_group.df['Endereço'].isin(st.session_state.extra_selected_condo)]
-            gtw_range = gtw_range.number_input('Gateway range in meters: ', min_value=1, value=1000)
+            c_gtw_number, c_gtw_range = st.columns(2)
+            qty_of_gtw = c_gtw_number.number_input('Distribute some gateways: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
+            st.session_state.extra_selected_address = c_gtw_number.multiselect('Or choose any address', options=filtered_group.df['Endereço'].unique())
+            st.session_state.extra_selected_residence = c_gtw_range.multiselect('Or choose any residence name', options=filtered_group.df['Grupo - Nome'].unique())
+
+            personalized_gtw = filtered_group.df[(filtered_group.df['Endereço'].isin(st.session_state.extra_selected_address))|(filtered_group.df['Grupo - Nome'].isin(st.session_state.extra_selected_residence))]
+            gtw_range = c_gtw_range.number_input('Gateway range in meters: ', min_value=1, value=1000)
+
 
             df_filtered_per_points = filtered_group.df.sort_values(by='Pontos instalados', ascending=False).iloc[:int(qty_of_gtw), :].reset_index()
             df_filtered_per_points = pd.concat([df_filtered_per_points, personalized_gtw.reset_index()], ignore_index=True)
@@ -130,7 +134,6 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
             st.write(df_filtered_per_points)
             if submit_gtw: st.session_state.gtw_filters = True
                             
-
     if st.session_state.gtw_filters:
         st.session_state.gtw_filters = False
         lat_list, lon_list = df_filtered_per_points['Latitude'].to_numpy(), df_filtered_per_points['Longitude'].to_numpy()
@@ -178,6 +181,31 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
     update_figs_layout.update_fig_layouts([mapa_agrupado_por_ponto, mapa_agrupado_por_sla, st.session_state.grafico_vazio], theme=choosed_theme)
 
     c_gtw_condos, c_gtw_pontos = st.columns(2)
+    change_center = st.button('Change the map center')
+    if change_center:
+        mapa_agrupado_por_ponto.update_mapboxes(center=dict(lat=-80, lon=-80))
     c_gtw_condos.plotly_chart(mapa_agrupado_por_ponto, use_container_width=True)
     c_gtw_pontos.plotly_chart(mapa_agrupado_por_sla, use_container_width=True)
     st.plotly_chart(st.session_state.grafico_vazio, use_container_width=True)
+
+    st.markdown('---')
+    st.subheader('Comparasion analysis')
+    grouped_comparison = pd.DataFrame() # inicializando a variável para não dar erro sem dar o trigger na query
+    with st.form('comparison_analysis'):
+        c_address_comp, c_resid_comp = st.columns(2)
+        addresses_to_compare = c_address_comp.multiselect('Choose any address to compare', options=filtered_data.df['Endereço'].unique())
+        condos_to_compare = c_resid_comp.multiselect('Choose any residence to compare', options=filtered_data.df['Grupo - Nome'].unique())
+        start_dt_compare = c_address_comp.date_input('Start date', value=datetime.datetime.today() - datetime.timedelta(days=1))
+        end_dt_compare = c_resid_comp.date_input('End date', value=datetime.datetime.today())
+        submit_comparion = st.form_submit_button('Start comparison')
+        if submit_comparion:
+            comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare)
+            comparison_results = pd.DataFrame(tmp_connection.run_single_query(command=comparison_query))
+            grouped_comparison = comparison_results.groupby(by=['Grupo - Nome', 'Endereço', 'data snapshot']).agg({'IEF':np.mean}).reset_index()
+            grouped_comparison.IEF = grouped_comparison.IEF.round(2)
+            grouped_comparison.sort_values(by=['IEF'], ascending=[True], inplace=True)
+            st.write(grouped_comparison)
+
+    if grouped_comparison.shape[0] > 0:
+        fig_indiv_comparion = individual_comparison.individual_com_figure(data=grouped_comparison)
+        st.plotly_chart(fig_indiv_comparion, use_container_width=True)

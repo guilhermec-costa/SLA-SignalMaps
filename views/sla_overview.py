@@ -5,7 +5,7 @@ from figures import sla_indicator_chart, sla_last_30days, rssi_last_30days, tran
 from queries import querie_builder, data_treatement
 from datetime import datetime
 
-def sla_overview(results:querie_builder.Queries, main_data=None) -> None:
+def sla_overview(results:querie_builder.Queries) -> None:
     metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
     df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
     df_recent_readings = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='RECENT_READINGS')
@@ -47,17 +47,20 @@ def sla_overview(results:querie_builder.Queries, main_data=None) -> None:
     sla_c.plotly_chart(sla_30days, use_container_width=True)
     rssi_c.plotly_chart(rssi_30days, use_container_width=True)
     bat_c.plotly_chart(battery_voltage30days, use_container_width=True)
+    st.markdown('---')
+    st.header('Individual Analysis')
     st.markdown('###')
     st.markdown('###')
+    st.markdown('---')
     st.plotly_chart(boxplot_metrics, use_container_width=True)
     st.markdown('---')
-    st.header('Análise de Leituras Diárias')
+    st.header('Daily Readings Analaysis')
     st.markdown('---')
     st.markdown('###')
     recent_readings_fig = recent_reading.recent_reading(data=df_recent_readings)
     st.plotly_chart(recent_readings_fig, use_container_width=True)
     st.markdown('---')
-    st.header('Análise de Transmissões Diárias')
+    st.header('Daily Tranmissions Analysis')
     st.markdown('---')
     st.markdown('###')
     daily_transmission_fig = transmissions.daily_transmissions(df_daily_transmissions)

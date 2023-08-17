@@ -18,7 +18,7 @@ class App:
             st.markdown(f'<style>{style.read()}</style>', unsafe_allow_html=True)
 
     def start_app(self, app_session_state) -> None:
-        if app_session_state != 'Error on connect to the database' and st.session_state.ALL_RESULTS is not None:
+        if app_session_state != 'Error on connect to the database' and st.session_state.ALL_RESULTS != {}:
                 
                 choosed_app = main_sidebar.main_sidebar()
                 choosed_module = importlib.import_module(choosed_app)
@@ -26,8 +26,6 @@ class App:
                 function_name = main_sidebar.module_mapping[module_name]
                 choosed_function = getattr(choosed_module, function_name)
                 choosed_function(results=st.session_state.ALL_RESULTS)
-        else:
-            st.error('Failed to render the app. Check if the queries were started.')
     
     def build_app(self) -> Union[Dict, str]:
         session_states.initialize_session_states([('start_querie', False),('ALL_RESULTS', {}), ('clear_cache', False)])
@@ -50,9 +48,11 @@ class App:
                 if not stop_querie_flag:
                     with st.spinner('Running queries.'):
                         cities = queries_instancy.run_single_query(command='SELECT name FROM cities WHERE company_id = 38;')
-                        main_df = queries_instancy.run_single_query(command=queries_raw_code.all_units_info(cities=cities['name']))
-                        st.session_state.ALL_RESULTS['ALL_UNITS'] = main_df
+                        main_df = queries_instancy.run_single_query(command=queries_raw_code.all_units_info(cities=cities['name'].to_list()))
+                        
                         st.session_state.ALL_RESULTS = queries_instancy.run_queries(queries_instancy.all_queries_commands)
+                        st.session_state.ALL_RESULTS['ALL_UNITS'] = main_df
+                    stop_querie_flag = st.empty()
 
             return st.session_state.ALL_RESULTS
         return 'Error on connect to the database'

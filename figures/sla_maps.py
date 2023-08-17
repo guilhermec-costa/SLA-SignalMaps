@@ -23,8 +23,8 @@ def plot_sla_map(data_sla: pd.DataFrame, title: str, colmn_to_base_color = None,
     continuous_scale = [(0, 'red'),(0.5, 'yellow'),(1, 'green')]
     bubble_size = check_bubble_size(group_type)
     fig = px.scatter_mapbox(data_sla, lat='Latitude', lon='Longitude', color=colmn_to_base_color, color_continuous_scale=continuous_scale, height=750,
-                            size=group_type, size_max=bubble_size, center=dict(lat=-23.5607, lon=-46.8171), zoom=8, opacity=0.95, hover_name='Endereço',
-                            hover_data=['Unidade de Negócio - Nome', 'IEF'])
+                            size=group_type, size_max=bubble_size, center=dict(lat=-23.5607, lon=-46.8171), zoom=8, opacity=0.95, hover_name='Grupo - Nome',
+                            hover_data=['Unidade de Negócio - Nome', 'Endereço', 'IEF', 'Cidade - Nome'])
     fig.update_layout(title=dict(text=title, xanchor='center', yanchor='top', x=0.5, y=0.98, font=dict(size=25, color='whitesmoke')),
                     font=dict(family='roboto'), mapbox=dict(accesstoken=get_mapbox_token(),
                                                             style=theme), legend=dict(orientation='h', yanchor='bottom', y=-0.15),

@@ -67,9 +67,10 @@ BUS = [
 
 def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
                    bussiness_unts:List[str] = ['Inst. Comgás', 'Comgás - Instalações 2022', 'Comgás - Instalações 2023', 'Homologação LAB COMGÁS'], residences:List[str] = ['test'], cities:List[str] = cidades) -> str:
+
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
     conv_busn_unts = ','.join(tuple(f"'{busn_unt}'" for busn_unt in BUS)) if bussiness_unts == [] else ','.join(tuple(f"'{bu}'" for bu in bussiness_unts))
-    conv_cities = ','.join(f"'{city}'" for city in cidades) if cities == [] else ','.join(tuple(f"'{city}'" for city in cities))
+    conv_cities = ','.join(tuple(f"'{city}'" for city in cidades)) if cities == [] else ','.join(tuple(f"'{city}'" for city in cities))
 
     ALL_UNITS = """
     SELECT dsl.module_id, r.rgi "Matrícula", m.serial_number, devc.pac "deveui",
@@ -95,6 +96,48 @@ def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
     AND dsl.snapshot_date_int =  {}
     """.format(conv_busn_unts, conv_cities, conv_date)
     return ALL_UNITS
+
+def individual_comparison(addresses:List[str], residences:List[str], startdt:datetime.date, enddt:datetime.date) -> str:
+    convstart_dt = datetime.datetime.strftime(startdt, format='%Y%m%d')
+    convend_dt = datetime.datetime.strftime(enddt, format='%Y%m%d')
+    where_clause = f"comp.id = 38 AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int IN ({convstart_dt}, {convend_dt})"
+    
+    where_conditions = ["comp.id = 38", "r.status = 'ACTIVATED'", f"dsl.snapshot_date_int IN ({convstart_dt}, {convend_dt})"]
+
+    if addresses or residences:
+        or_conditions = []
+        
+        if addresses:
+            conv_addresses_teste = ','.join(tuple(f"'{address}'" for address in addresses))
+            or_conditions.append(f" r.address IN ({conv_addresses_teste})")
+
+        if residences:
+            conv_residences_teste = ','.join(tuple(f"'{residence}'" for residence in residences))
+            or_conditions.append(f"cs.name IN ({conv_residences_teste})")
+        
+        where_conditions.append("(" + " OR ".join(or_conditions) + ")")
+    where_clause = " AND ".join(where_conditions)
+
+
+
+
+    INDIVIDUAL_COMPARISON = f"""
+    SELECT r.address "Endereço", round(dsl.ief * 100, 2) "IEF", cs.name "Grupo - Nome", date(dsl.snapshot_date_int) "data snapshot"
+    FROM daily_signal_logs dsl
+    INNER JOIN residences r 
+            ON (dsl.residence_id = r.id)
+    INNER JOIN commercial_services cs
+            ON (cs.id = r.commercial_service_id)
+    INNER JOIN cities c
+            ON c.id = cs.city_id 
+    INNER JOIN business_units bu
+            ON (bu.id = cs.business_unit_id)
+    INNER JOIN companies comp
+            ON comp.id = bu.company_id
+    WHERE {where_clause}
+    ORDER BY dsl.snapshot_date_int DESC
+    """
+    return INDIVIDUAL_COMPARISON
 
 SLA_OVER_TIME_ALL_UNITS = """
 SELECT date(dsl.snapshot_date_int) snapshot_date, bu.name, round(avg(dsl.ief) * 100, 2) sla_mean,
