@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from . import update_figs_layout
 import numpy as np
 import datetime
-import streamlit as st
+
 
 def daily_transmissions(data):
     fig = make_subplots(rows=1, cols=3, vertical_spacing=0.3, print_grid=True,

@@ -6,6 +6,8 @@ from queries import querie_builder
 from views import main_sidebar
 import importlib
 from queries import queries_raw_code
+from typing import List, Tuple, Any
+import pandas as pd
 
 class App:
 
@@ -28,7 +30,7 @@ class App:
                 choosed_function(results=st.session_state.ALL_RESULTS)
     
     def build_app(self) -> Union[Dict, str]:
-        session_states.initialize_session_states([('start_querie', False),('ALL_RESULTS', {}), ('clear_cache', False)])
+
         queries_instancy = querie_builder.Queries(name='laager_queries')
         connection_state = queries_instancy.verify_connection()
 
@@ -47,10 +49,11 @@ class App:
                 stop_querie_flag = stop_queries.button('Stop queries', type='secondary')
                 if not stop_querie_flag:
                     with st.spinner('Running queries.'):
-                        cities = queries_instancy.run_single_query(command='SELECT name FROM cities WHERE company_id = 38;')
-                        main_df = queries_instancy.run_single_query(command=queries_raw_code.all_units_info(cities=cities['name'].to_list()))
+                        #cities = queries_instancy.run_single_query(command='SELECT name FROM cities WHERE company_id = 38;')
+                        main_df = queries_instancy.run_single_query(command=queries_raw_code.all_units_info())
                         
                         st.session_state.ALL_RESULTS = queries_instancy.run_queries(queries_instancy.all_queries_commands)
+
                         st.session_state.ALL_RESULTS['ALL_UNITS'] = main_df
                     stop_querie_flag = st.empty()
 

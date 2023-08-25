@@ -1,11 +1,17 @@
-import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from . import update_figs_layout
 
 @st.cache_data
 def analise_descritiva(data):
     map_colors = ['#5FE867', '#69FFF1', '#6B90E8', '#B469FF', '#F564A2', '#E89482', '#E8C36B']
-    fig = px.bar(data, x='metricas', y='IEF', color='metricas', color_discrete_sequence=map_colors, text_auto=True)
+    fig = go.Figure()
+    counter = 0
+    for metric in data['metricas']:
+        subset = data[data['metricas']==metric]
+        fig.add_trace(go.Bar(x=subset['metricas'], y=subset['IEF'], name=metric, marker=dict(color=map_colors[counter])))
+        counter += 1
+
     fig.update_layout(title=dict(text='SLA Descriptive analysis', xanchor='center', yanchor='top', x=0.5, y=0.98, font=dict(size=30, color='whitesmoke')),
                       font=dict(family='roboto'), uniformtext_minsize=26, height=580, template='plotly')
     fig.update_traces(textposition='outside', textfont_size=16)
