@@ -6,8 +6,6 @@ from queries import querie_builder
 from views import main_sidebar
 import importlib
 from queries import queries_raw_code
-from typing import List, Tuple, Any
-import pandas as pd
 
 class App:
 

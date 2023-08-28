@@ -10,7 +10,6 @@ from polygons import polygons
 from concurrent.futures import ThreadPoolExecutor
 from stqdm import stqdm
 import session_states
-import plotly.graph_objects as go
 
 def geo_comparison(results):
 
@@ -56,6 +55,7 @@ def geo_comparison(results):
 
 
                 if st.session_state.enable_around_affected_points:
+                    st.session_state.enable_around_affected_points = False
                     with st.spinner('Calculate polygons...'):
                         lat_list_first_date, lon_list_first_date = grouped_comparison_firstday['Latitude'].to_numpy(), grouped_comparison_firstday['Longitude'].to_numpy()
                         lat_list_last_date, lon_list_last_date = grouped_comparison_lastday['Latitude'].to_numpy(), grouped_comparison_lastday['Longitude'].to_numpy()
@@ -97,7 +97,6 @@ def geo_comparison(results):
         with tab_maps:
             map_left, map_right = st.columns(2)
             
-            st.write(st.session_state.enable_around_affected_points)
             if st.session_state.enable_around_affected_points:
                 sla_map_left = sla_maps.plot_sla_map(data_sla=affected_points_first_date, title=f'Snapshot {start_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 sla_map_right = sla_maps.plot_sla_map(data_sla=affected_points_last_date, title=f'Snapshot {end_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)

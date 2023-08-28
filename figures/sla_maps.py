@@ -33,7 +33,7 @@ def plot_sla_map(data_sla: pd.DataFrame, title: str, colmn_to_base_color = None,
     fig.update_layout(title=dict(text=title, xanchor='center', yanchor='top', x=0.5, y=0.98, font=dict(size=25, color='whitesmoke')),
                     font=dict(family='roboto'), mapbox=dict(accesstoken=get_mapbox_token(),
                                                             style=theme), legend=dict(orientation='h', yanchor='bottom', y=-0.15),
-                                                            template='plotly')
+                                                            template='presentation')
     
     fig.update_coloraxes(colorbar=dict(thickness=30))
     update_figs_layout.alter_hover(fig=fig)

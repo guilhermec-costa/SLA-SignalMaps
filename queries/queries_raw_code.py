@@ -1,7 +1,5 @@
 import datetime
 from typing import List
-from streamlit.elements.time_widgets import DateWidgetReturn
-from . import querie_builder
 import streamlit as st
 
 city_codes = {
@@ -72,18 +70,19 @@ city_codes = {
 BU_MAP = {'Inst. Comgás':750, 'Inst. COMGÁS':750, 'Comgás - Instalações 2022':502, 'Comgás - Instalações 2023':741, 'Homologação LAB COMGÁS':747}
 
 
-def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
+def all_units_info(period = datetime.datetime.today().date(),
                    bussiness_unts:List[str] = BU_MAP.keys(), addresses = [], residences = [], cities = []) -> str:
     
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
-    bu_codes = ','.join(tuple(f"{BU_MAP[bu]}" for bu in bussiness_unts))
+    bu_codes = ','.join(tuple(f"{BU_MAP[bu]}" for bu in bussiness_unts)) if bussiness_unts != [] else ','.join(tuple(f"{value}" for value in BU_MAP.values()))
 
     where_clause = f"bu.id IN ({bu_codes}) AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int = {conv_date}"
     
     where_conditions = [f"bu.id IN ({bu_codes})", "r.status = 'ACTIVATED'", f"dsl.snapshot_date_int = {conv_date}"]
-    
-    if addresses or residences or cities:
-        or_conditions = []
+    or_conditions = []
+    and_conditions = []
+
+    if addresses or residences:
         
         if addresses:
             conv_addresses_teste = ','.join(tuple(f"'{address}'" for address in addresses))
@@ -92,13 +91,14 @@ def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
         if residences:
             conv_residences_teste = ','.join(tuple(f"'{residence}'" for residence in residences))
             or_conditions.append(f"cs.name IN ({conv_residences_teste})")
-
-        if cities:
-            conv_cities_teste = ','.join(tuple(f"'{city}'" for city in cities))
-            or_conditions.append(f"c.name IN ({conv_cities_teste})")
-
-        
+       
         where_conditions.append("(" + " OR ".join(or_conditions) + ")")
+
+    if cities:
+        conv_cities_teste = ','.join(tuple(f"'{city}'" for city in cities))
+        and_conditions.append(f"c.name IN ({conv_cities_teste})")
+        where_conditions.append("(" + " AND ".join(and_conditions) + ")")
+
     where_clause = " AND ".join(where_conditions)
     
 
@@ -121,6 +121,7 @@ def all_units_info(period: DateWidgetReturn = datetime.datetime.today().date(),
             ON (m.residence_id = r.id)
     WHERE {where_clause} AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
 					    AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})"""
+
     return ALL_UNITS
 
 def individual_comparison(addresses:List[str], residences:List[str], startdt:datetime.date, enddt:datetime.date) -> str:
