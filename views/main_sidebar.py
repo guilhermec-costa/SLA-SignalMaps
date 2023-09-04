@@ -8,7 +8,7 @@ module_mapping = {
                 'views.comparisons':'geo_comparison'
             }
 
-def main_sidebar() -> str:
+def main_sidebar():
     laager_logo = Image.open('logos/laager_logo.png')
     map_app_tabs = {'SLA overview metrics': 'sla_overview', 'Geographic SLA analysis': 'geospacial_analysis', 'Geolocation SLA comparison':'comparisons'}
     with st.sidebar:
@@ -24,9 +24,11 @@ def main_sidebar() -> str:
                                     "nav-link": {"font-size": "23px", "text-align": "left", "margin":"0px", "--hover-color": "##7FA6EB", "family":"roboto", "padding-top":"20px", "hover":"black"},
         "nav-link-selected": {"background-color": "#15E815"},
     }, icons=['bar-chart-line-fill', 'globe-americas', 'geo-alt-fill'])
+        simulate_profile = st.radio('Choose a company to see data', options=['Comgás', 'Sanasa'])
 
     def __repr__():
         return "Olá mundo"
+    
 
-    return 'views.' + map_app_tabs[selected_menu]
+    return 'views.' + map_app_tabs[selected_menu], simulate_profile
 

@@ -4,12 +4,13 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 @st.cache_data
-def gauge_sla_figure(data):
+def gauge_sla_figure(data, period):
     # specs: especificação dos tipos dos subplots, por LINHA
-    titulos = (('Comgás - Instalações 2022', 'Comgás - Instalações 2023', 'Inst. Comgás', 'SLA geral'))
+    bus = [bu for bu in data['Unidade de Negócio - Nome'].unique()]
+    bus.append('SLA geral')
     fig = make_subplots(rows=1, cols=4,
                         specs=[[dict(type='domain') for _ in range(4)]],
-                        subplot_titles=titulos)
+                        subplot_titles=tuple(bus))
     
     sla_geral = 0
     for *row, business_unit in data.itertuples():
@@ -70,7 +71,7 @@ def gauge_sla_figure(data):
 
     fig.update_annotations(y=-0.1, font=dict(family='roboto', size=20, color='lightgrey'))
     fig.update_layout(font=dict(family='roboto', size=16, color='lightgrey'),
-                      title=dict(text='SLA % - Last 24 hours', x=0.5, y=0.93, xanchor='center', yanchor='top',
+                      title=dict(text=f'SLA % -> {period}', x=0.5, y=0.93, xanchor='center', yanchor='top',
                                  font=dict(size=30, family='roboto')))
         
     return fig

@@ -11,11 +11,11 @@ from concurrent.futures import ThreadPoolExecutor
 from stqdm import stqdm
 import session_states
 
-def geo_comparison(results):
+def geo_comparison(results, profile_to_simulate):
 
     session_states.initialize_session_states([('polygon_df_first_date', pd.DataFrame()), ('polygon_df_last_date', pd.DataFrame()), ('enable_around_affected_points', False)])
     tmp_connection = querie_builder.Queries(name='temporary_queries_comparison')
-    df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
+    df_all_unit_services = results['ALL_UNITS']
 
     st.subheader('Comparasion analysis')
     with st.form('comparison_analysis'):
@@ -29,8 +29,8 @@ def geo_comparison(results):
         if include_around_points:
             st.session_state.enable_around_affected_points = True
         if submit_comparion:
-            df_first_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=start_dt_compare)))
-            df_last_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=end_dt_compare)))
+            df_first_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=start_dt_compare, company_id=profile_to_simulate)))
+            df_last_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=end_dt_compare, company_id=profile_to_simulate)))
 
             df_first_date['Ponto'] = list(zip(df_first_date['Latitude'], df_first_date['Longitude']))
             df_first_date['Ponto'] = df_first_date['Ponto'].apply(lambda x: Point(x))
@@ -43,7 +43,7 @@ def geo_comparison(results):
 
 
 
-            comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare)
+            comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare, company_id=profile_to_simulate)
             if comparison_query != "no data":
 
                 comparison_results = pd.DataFrame(tmp_connection.run_single_query(command=comparison_query))
@@ -55,7 +55,6 @@ def geo_comparison(results):
 
 
                 if st.session_state.enable_around_affected_points:
-                    st.session_state.enable_around_affected_points = False
                     with st.spinner('Calculate polygons...'):
                         lat_list_first_date, lon_list_first_date = grouped_comparison_firstday['Latitude'].to_numpy(), grouped_comparison_firstday['Longitude'].to_numpy()
                         lat_list_last_date, lon_list_last_date = grouped_comparison_lastday['Latitude'].to_numpy(), grouped_comparison_lastday['Longitude'].to_numpy()
@@ -98,6 +97,7 @@ def geo_comparison(results):
             map_left, map_right = st.columns(2)
             
             if st.session_state.enable_around_affected_points:
+                st.session_state.enable_around_affected_points = False
                 sla_map_left = sla_maps.plot_sla_map(data_sla=affected_points_first_date, title=f'Snapshot {start_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 sla_map_right = sla_maps.plot_sla_map(data_sla=affected_points_last_date, title=f'Snapshot {end_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 map_left.write(affected_points_first_date.IEF.mean())

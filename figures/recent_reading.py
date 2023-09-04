@@ -7,7 +7,9 @@ from . import update_figs_layout
 def recent_reading(data):
     fig = make_subplots(rows=1, cols=3, vertical_spacing=0.4, print_grid=True,
                         subplot_titles=tuple(bu for bu in data['name'].unique()))
-
+    
+    color_list = ['#C47EF2', '#4EF2F2', '#F28A4E']
+    counter=0
     col_pos, row_pos = 1, 1
     for idx, bu in enumerate(data['name'].unique()):
         showlegend:bool = True if idx == 0 else False
@@ -15,7 +17,7 @@ def recent_reading(data):
         filtered_data = data[data['name']==bu]
 
         fig.add_trace(go.Scatter(x=filtered_data['reading_date'], y=filtered_data['all_readings'], legendgroup=f'bu_{bu}', 
-                                 marker=dict(color='#E2F567'), line=dict(width=3, color='#F57C36'), name='Sent messages', showlegend=showlegend),
+                                 line=dict(width=2.5, color=color_list[counter]), name='Sent messages', showlegend=showlegend),
                       row=row_pos, col=col_pos)
         # fig.add_trace(go.Scatter(x=filtered_data['reading_date'], y=filtered_data['lost_uplinks'], legendgroup=f'bu_{bu}'#, legendgrouptitle_text=f'Messages',
         #                          ,marker=dict(color='#FC5F4E'), line=dict(width=2), name='Lost messages', showlegend=showlegend),
@@ -31,6 +33,7 @@ def recent_reading(data):
         # if col_pos > 2:
         #     col_pos = 1
         #     row_pos += 1
+        counter+=1
     
     fig.update_layout(font=dict(family='roboto'),
                       legend=dict(

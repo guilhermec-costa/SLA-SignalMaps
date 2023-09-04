@@ -24,7 +24,7 @@ def sla_per_city(data):
     
     fig.update_yaxes(tickfont=dict(family='roboto', size=15), title=None)
     fig.update_layout(height=650, font=dict(family='roboto', size=16), showlegend=False,
-                      title=dict(text='SLA x Installations', x=0.5, y=0.97, xanchor='center', yanchor='top',
+                      title=dict(text='SLA x Installations (per city)', x=0.5, y=0.97, xanchor='center', yanchor='top',
                                  font=dict(size=26, family='roboto')))
     
     fig.update_annotations(font=dict(size=18, family='roboto'))

@@ -1,4 +1,5 @@
 # geospacial analysis code
+from sqlalchemy.engine import result
 import streamlit as st
 import datetime
 from queries import querie_builder, data_treatement
@@ -16,8 +17,7 @@ import googlemaps
 import json
 from math import trunc
     
-def geo_analysis(results: querie_builder.Queries, main_data=None):
-    
+def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
     # inicialização das variáveis de sessão
     session_states.initialize_session_states([('main_data', pd.DataFrame()), ('grouped_data', pd.DataFrame()), ('general_data', pd.DataFrame())])
 
@@ -31,15 +31,16 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
     
     #inicialização dos dados necessários
     if st.session_state.main_data.shape[0] == 0:
-        df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
+        df_all_unit_services = results['ALL_UNITS']
         df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
         df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
         st.session_state.general_data = df_all_unit_services.copy()
 
     else:
-        df_all_unit_services = st.session_state.main_data
+        df_all_unit_services = results['ALL_UNITS']
         df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
         df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
+    
 
     agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
@@ -52,12 +53,12 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
     # Formulários pra filtros de queries
     with st.form(key='submit_sla_form'):
         c_BU, c_city = st.columns(2)
-        filtro_BU = c_BU.multiselect('Business Unit', options=st.session_state.general_data['Unidade de Negócio - Nome'].unique())
-        st.session_state.city_filter = c_city.multiselect('City', options=st.session_state.general_data['Cidade - Nome'].unique())
+        filtro_BU = c_BU.multiselect('Business Unit', options=filtered_data.df['Unidade de Negócio - Nome'].unique())
+        st.session_state.city_filter = c_city.multiselect('City', options=filtered_data.df['Cidade - Nome'].unique())
         
         c_address, c_group = st.columns(2)
-        st.session_state.address_filter = c_address.multiselect('Address name', options=st.session_state.general_data['Endereço'].unique())
-        st.session_state.residence_filter = c_group.multiselect('Residence name', options=st.session_state.general_data['Grupo - Nome'].unique())
+        st.session_state.address_filter = c_address.multiselect('Address name', options=filtered_data.df['Endereço'].unique())
+        st.session_state.residence_filter = c_group.multiselect('Residence name', options=filtered_data.df['Grupo - Nome'].unique())
 
         c_num_min, c_num_max, c_status_date = st.columns(3)
 
@@ -71,7 +72,8 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
         submit_form = st.form_submit_button('Submit the form')
         if submit_form:
             # caso o botão seja apertado, uma query individual é disparada com os filtros
-            new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter, addresses=st.session_state.address_filter, residences=st.session_state.residence_filter)
+            new_query = queries_raw_code.all_units_info(status_date, bussiness_unts=filtro_BU, cities=st.session_state.city_filter, addresses=st.session_state.address_filter, residences=st.session_state.residence_filter,
+                                                        company_id=profile_to_simulate)
 
             filtered_data.df  = pd.DataFrame(tmp_connection.run_single_query(command=new_query))
             filtered_data.general_qty_filter(min_sla_pontos, max_sla_pontos, 'IEF')
@@ -82,7 +84,7 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
             .agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean, 'data snapshot':np.max}).reset_index()
             filtered_group.df.IEF = filtered_group.df.IEF.apply(lambda x: round(x, 2))
 
-            #
+
             # filtered_group.validate_filter('general_filter', filtro_BU, refer_column='Unidade de Negócio - Nome')
             # filtered_group.validate_filter('general_filter', st.session_state.address_filter, refer_column='Endereço')
             # filtered_group.validate_filter('general_filter', st.session_state.residence_filter, refer_column='Grupo - Nome')    
@@ -113,7 +115,7 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
     theme_position, ponto_filtrado, sla_filtrado, opc_agrupamento, *_ = st.columns(5)
     theme_position.metric('Filtered addresses:', f'{st.session_state.grouped_data.shape[0]} ({round(st.session_state.grouped_data.shape[0] / len(agrupado_por_condo) * 100, 2)})%',
                         help=f'Total of addresses: {len(agrupado_por_condo)}')
-    ponto_filtrado.metric('Pontos filtrados:', f'{st.session_state.main_data.shape[0]} ({round(len(st.session_state.main_data) / st.session_state.general_data.shape[0] * 100, 2)})%',
+    ponto_filtrado.metric('Pontos filtrados:', f'{st.session_state.main_data.shape[0]} ({round(len(st.session_state.main_data) / filtered_data.df.shape[0] * 100, 2)})%',
                         help=f'Total of installations: {st.session_state.general_data.shape[0]}')
     sla_filtrado.metric('Filtered SLA %', value=f'{round(np.mean(st.session_state.main_data.IEF), 2)}%')
     st.markdown('---')
@@ -145,8 +147,8 @@ def geo_analysis(results: querie_builder.Queries, main_data=None):
         with st.form('gtw_form', clear_on_submit=False):
             c_gtw_number, c_gtw_range = st.columns(2)
             #qty_of_gtw = c_gtw_number.number_input('Distribute some gateways: ', min_value=0, max_value=st.session_state.grouped_data['Pontos instalados'].max())
-            st.session_state.extra_selected_address = c_gtw_number.multiselect('Or choose any address', options=st.session_state.general_data['Endereço'].unique())
-            st.session_state.extra_selected_residence = c_gtw_range.multiselect('Or choose any residence name', options=st.session_state.general_data['Grupo - Nome'].unique())
+            st.session_state.extra_selected_address = c_gtw_number.multiselect('Or choose any address', options=st.session_state.general_data['Endereço'].unique(), key='address')
+            st.session_state.extra_selected_residence = c_gtw_range.multiselect('Or choose any residence name', options=st.session_state.general_data['Grupo - Nome'].unique(), key='residence')
 
             personalized_gtw = st.session_state.general_data[(st.session_state.general_data['Endereço'].isin(st.session_state.extra_selected_address)) | 
                                                              (st.session_state.general_data['Grupo - Nome'].isin(st.session_state.extra_selected_residence))]
