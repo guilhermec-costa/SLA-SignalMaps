@@ -36,6 +36,7 @@ class Queries:
     
     @st.cache_data(ttl=36000)
     def run_single_query(_self, command:str) -> None:
+        st.write(command)
         return _self.connection.query(sql=command)
 
     def verify_connection(self) -> Union[str, bool]:

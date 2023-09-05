@@ -82,7 +82,9 @@ def geo_comparison(results, profile_to_simulate):
 
 
                     affected_points_first_date = cp_first_day.loc[contained_index_first_date]
+                    affected_points_first_date.drop_duplicates(subset=['Matrícula'], inplace=True)
                     affected_points_last_date = cp_last_day.loc[contained_index_last_date]
+                    affected_points_first_date.drop_duplicates(subset=['Matrícula'], inplace=True)
                     with st.expander('See filtered data'):
                         tab_first_day, tab_last_day = st.columns(2)
                         tab_first_day.subheader(f'Affected points on snapshot from {start_dt_compare}')

@@ -70,14 +70,9 @@ BU_MAP_COMGAS = {'Inst. Comgás':750, 'Inst. COMGÁS':750, 'Comgás - Instalaç�
 BU_MAP_SABESP = {'Condomínios':493, 'Macromedidores - Setorização':494, 'Grandes Consumidores':501}
 
 
-def all_units_info(period = datetime.datetime.today().date() - datetime.timedelta(days=1), company_id=38,
+def all_units_info(period = datetime.datetime.today().date(), company_id=38,
                    bussiness_unts:List[str] = [], addresses = [], residences = [], cities = []) -> str:
     
-    # if bussiness_unts == []:
-    #     if company_id == 38:
-    #         codes = '(750,502,741,747)'
-    #     if company_id == 34:
-    #         codes = '(493, 494, 501)'
     if company_id == 38:
         bu_codes = ','.join(tuple(f"{BU_MAP_COMGAS[bu]}" for bu in bussiness_unts)) if bussiness_unts != [] else ','.join(tuple(f"{value}" for value in BU_MAP_COMGAS.values()))
     if company_id == 34:
@@ -86,9 +81,9 @@ def all_units_info(period = datetime.datetime.today().date() - datetime.timedelt
     st.write(bu_codes)
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
 
-    where_clause = f"bu.id IN ({bu_codes}) AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int = {conv_date}"
+    where_clause = f"dsl.snapshot_date_int = {conv_date} AND bu.id IN ({bu_codes}) AND r.status = 'ACTIVATED'"
     
-    where_conditions = [f"bu.id IN ({bu_codes})", "r.status = 'ACTIVATED'", f"dsl.snapshot_date_int = {conv_date}"]
+    where_conditions = [f"dsl.snapshot_date_int = {conv_date}", f"bu.id IN ({bu_codes})", "r.status = 'ACTIVATED'"]
     or_conditions = []
     and_conditions = []
 
@@ -129,11 +124,9 @@ def all_units_info(period = datetime.datetime.today().date() - datetime.timedelt
             ON comp.id = bu.company_id
     INNER JOIN meters m
             ON (m.residence_id = r.id)
-    WHERE {where_clause} AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-					    AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})"""
+    WHERE {where_clause}"""
 
-    
-    st.write(ALL_UNITS)
+
     return ALL_UNITS
 
 def individual_comparison(addresses:List[str], residences:List[str], startdt:datetime.date, enddt:datetime.date, company_id) -> str:
@@ -198,8 +191,9 @@ def sla_over_time_all_units(company_id=38):
             ON bu.id = cs.business_unit_id
     INNER JOIN companies c
             ON c.id = bu.company_id
-    WHERE c.id = {company_id} AND r.status = 'ACTIVATED' AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = 20230820)
-                                                                                                                    AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = date(now()))
+    WHERE dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = 20230813)
+                                                                        AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = date(now()))
+        AND r.status = 'ACTIVATED' AND c.id = {company_id}
     GROUP BY date(dsl.snapshot_date_int), bu.name
     ORDER BY date(dsl.snapshot_date_int) ASC;
     """
@@ -220,7 +214,7 @@ def recent_readings(company_id=38):
             ON bu.id = cs.business_unit_id
     INNER JOIN companies c
             ON c.id = bu.company_id 
-    WHERE c.id = {company_id} AND rr.recovered = false
+    WHERE rr.recovered = false AND c.id = {company_id}
     GROUP BY bu.name, reading_date
     """
     return RECENT_READINGS
@@ -232,7 +226,7 @@ def port_zero(company_id=38):
         codes = '(493, 494, 501)'
 
     PORT_ZERO = f"""
-    select bu.name, date(alarms.created_at) as "created_at", alarms.description, alarms.code, m.id meter_id from alarms
+    select bu.name, date(alarms.created_at) as "created_at", alarms.description, alarms.code, m.id meter_id, alarms.status  from alarms
     inner join meters m
             on m.id = alarms.meter_id 
     inner join residences r

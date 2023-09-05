@@ -3,6 +3,7 @@ import plotly.express as px
 import pandas as pd
 from . import update_figs_layout
 import streamlit as st
+import datetime
 
 @st.cache_data
 def sla_last_30days(data: pd.DataFrame):
@@ -14,7 +15,10 @@ def sla_last_30days(data: pd.DataFrame):
         fig.add_trace(go.Scatter(x=filtered_BU['snapshot_date'], y=filtered_BU['sla_mean'], mode='lines+markers', line=dict(width=3, color=color_list[idx], shape='spline'),
                                 name=filtered_BU['name'].unique()[0]))
 
-    fig.update_layout(title=dict(text='Average SLA over the last 30 days', font=dict(size=26, family='roboto'), x=0.5, y=0.93, xanchor='center', yanchor='top'),
+    min_date = data['snapshot_date'].min()
+    cur_date = datetime.datetime.today().date()
+    st.write(min_date)
+    fig.update_layout(title=dict(text=f'SLA médio de {min_date} a {cur_date}', font=dict(size=26, family='roboto'), x=0.5, y=0.93, xanchor='center', yanchor='top'),
                       font=dict(family='roboto'), colorscale_sequential=px.colors.qualitative.G10,
                       legend=dict(y=-0.2, orientation='h', font=dict(family='roboto', size=14)), height=500)
     

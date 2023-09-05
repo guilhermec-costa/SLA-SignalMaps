@@ -24,7 +24,8 @@ def main_sidebar():
                                     "nav-link": {"font-size": "23px", "text-align": "left", "margin":"0px", "--hover-color": "##7FA6EB", "family":"roboto", "padding-top":"20px", "hover":"black"},
         "nav-link-selected": {"background-color": "#15E815"},
     }, icons=['bar-chart-line-fill', 'globe-americas', 'geo-alt-fill'])
-        simulate_profile = st.radio('Choose a company to see data', options=['Comgás', 'Sanasa'])
+        simulate_profile = st.radio('Choose a company to see data', options=['Comgás'])
+        # adicionar sanasa nas opções de simulação
 
     def __repr__():
         return "Olá mundo"

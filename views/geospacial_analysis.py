@@ -53,8 +53,8 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
     # Formulários pra filtros de queries
     with st.form(key='submit_sla_form'):
         c_BU, c_city = st.columns(2)
-        filtro_BU = c_BU.multiselect('Business Unit', options=filtered_data.df['Unidade de Negócio - Nome'].unique())
-        st.session_state.city_filter = c_city.multiselect('City', options=filtered_data.df['Cidade - Nome'].unique())
+        filtro_BU = c_BU.multiselect('Business Unit', options=filtered_data.df['Unidade de Negócio - Nome'].unique(), key='bu_filter')
+        st.session_state.city_filter = c_city.multiselect('City', options=filtered_data.df['Cidade - Nome'].unique(), key='cityfilter')
         
         c_address, c_group = st.columns(2)
         st.session_state.address_filter = c_address.multiselect('Address name', options=filtered_data.df['Endereço'].unique())

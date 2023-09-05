@@ -5,7 +5,8 @@ from figures import sla_indicator_chart, sla_last_30days, rssi_last_30days, tran
 from queries import querie_builder, data_treatement, queries_raw_code
 from datetime import datetime
 import pandas as pd
-
+import plotly.graph_objects as go
+from figures import update_figs_layout
 def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     st.write(profile_to_simulate)
     metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
@@ -14,11 +15,12 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     port_zero_data = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='PORT_ZERO')
     #st.write(port_zero_data)
     port_zero_data.drop_duplicates(subset=['created_at','meter_id'], keep='first', inplace=True)
-
-    port_zero_grouped = port_zero_data[['name', 'created_at', 'code']].groupby(by=['name','created_at']).agg({'code':'count'}).reset_index()
+    port_zero_grouped = port_zero_data[['name', 'created_at', 'code', 'status']].groupby(by=['name','created_at', 'status']).agg({'code':'count'}).reset_index()
     port_zero_grouped.sort_values(by=['created_at'], ascending=True, inplace=True)
     port_zero_grouped.created = port_zero_grouped.created_at.apply(lambda x: x.strftime('%b %d, %Y'))
     port_zero_grouped_onlydate = port_zero_grouped.groupby(by='created_at').agg({'code':'sum'}).reset_index()
+    port_zero_grouped_status = port_zero_grouped.groupby(by=['created_at', 'status']).agg({'code':'sum'}).reset_index()
+    port_zero_grouped_status = port_zero_grouped_status[port_zero_grouped_status['status']=='SOLVED']
     # 
     # df_daily_transmissions = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='DAILY_TRANSMISSIONS')
     # df_daily_transmissions.snapshot_date = df_daily_transmissions.snapshot_date.apply(lambda x: datetime.strptime(x, '%d/%m/%Y').date())
@@ -83,12 +85,17 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     st.markdown('---')
     portzero_overall, portzero_segreg = st.tabs(['Port 0 Overall', 'Port 0 by Bussiness Unit'])
     port_zero_fig_overall = port_zero.port_zero_plot(data=port_zero_grouped_onlydate, x_axis='created_at', y_axis='code')
+    port_zero_fig_overall.add_trace(go.Scatter(x=port_zero_grouped_status['created_at'],
+                                               y=port_zero_grouped_status['code'], name='SOLVED', text=port_zero_grouped_status['code'],
+                                               textposition='top center', textfont=dict(size=16, family='Roboto, sans-serif', color='black'),
+                                               mode='lines+markers+text', line=dict(color='#FF6501', width=2)))
+    
     port_zero_fig_segreg = port_zero.port_zero_plot(data=port_zero_grouped, x_axis='created_at', y_axis='code', segregate_bu=True)
     with portzero_overall:
         portzero_overall.plotly_chart(port_zero_fig_overall, use_container_width=True)
 
     with portzero_segreg:
-        portzero_segreg.plotly_chart(port_zero_fig_segreg, use_container_width=True)
+        st.write('teste')
     st.markdown('---')
     # st.header('Daily Tranmissions Analysis')
     # st.markdown('---')
