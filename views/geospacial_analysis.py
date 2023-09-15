@@ -1,5 +1,4 @@
 # geospacial analysis code
-from sqlalchemy.engine import result
 import streamlit as st
 import datetime
 from queries import querie_builder, data_treatement
@@ -15,8 +14,10 @@ from queries import queries_raw_code
 import session_states
 import googlemaps
 import json
+from .comparisons import get_improvement, INSTALLED_GATEWAYS, NOT_INSTALLED
 from math import trunc
-    
+
+notinstalled = []
 def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
     # inicialização das variáveis de sessão
     session_states.initialize_session_states([('main_data', pd.DataFrame()), ('grouped_data', pd.DataFrame()), ('general_data', pd.DataFrame())])
@@ -28,7 +29,6 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
     tmp_connection = querie_builder.Queries(name='temporary_queries')
 
     jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
-    
     #inicialização dos dados necessários
     if st.session_state.main_data.shape[0] == 0:
         df_all_unit_services = results['ALL_UNITS']
@@ -41,9 +41,12 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
         df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
         df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
     
-
     agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
+    
+    to_improve = agrupado_por_condo.copy()
+    to_improve['points_to_improve'] = agrupado_por_condo[['Matrícula', 'IEF']].apply(lambda row: get_improvement(row['Matrícula'], row.IEF), axis=1)
+    to_improve.sort_values(by=['points_to_improve'], ascending=[False], inplace=True)
     
     st.markdown('---')
     st.subheader('Filters')
@@ -147,7 +150,8 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
         with st.form('gtw_form', clear_on_submit=False):
             c_gtw_number, c_gtw_range = st.columns(2)
             #qty_of_gtw = c_gtw_number.number_input('Distribute some gateways: ', min_value=0, max_value=st.session_state.grouped_data['Pontos instalados'].max())
-            st.session_state.extra_selected_address = c_gtw_number.multiselect('Or choose any address', options=st.session_state.general_data['Endereço'].unique(), key='address')
+            st.session_state.extra_selected_address = c_gtw_number.multiselect('Or choose any address', options=st.session_state.general_data['Endereço'].unique(), key='address',
+                                                                               default=INSTALLED_GATEWAYS+NOT_INSTALLED)
             st.session_state.extra_selected_residence = c_gtw_range.multiselect('Or choose any residence name', options=st.session_state.general_data['Grupo - Nome'].unique(), key='residence')
 
             personalized_gtw = st.session_state.general_data[(st.session_state.general_data['Endereço'].isin(st.session_state.extra_selected_address)) | 
@@ -169,9 +173,8 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
     if st.session_state.gtw_filters:
         st.session_state.gtw_filters = False
         lat_list, lon_list = grouped_personalized['Latitude'].to_numpy(), grouped_personalized['Longitude'].to_numpy()
-        with st.spinner('Calculate polygons...'):
-            with ThreadPoolExecutor(4) as executor:
-                list_of_polygons = list(executor.map(polygons.calculate_polygons, lat_list, lon_list, [gtw_range]*len(lat_list)))
+        with ThreadPoolExecutor(4) as executor:
+            list_of_polygons = list(executor.map(polygons.calculate_polygons, lat_list, lon_list, [gtw_range]*len(lat_list)))
         
         contained_index = []
         with st.spinner('Calculating polygons...'):
@@ -187,11 +190,17 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
                     temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
 
                     st.session_state.polygon_df = polygons.tmp_coordinates(temporary_lats, temporary_longs)
+                    installed_color = 'rgba(20, 2222, 169, 0.6)'
+                    not_installed_color = 'rgba(186, 87, 250, 0.8)'
+                    color = installed_color if grouped_personalized.loc[n:n, 'Endereço'].values[0] in INSTALLED_GATEWAYS else not_installed_color
+                    if grouped_personalized.loc[n:n, 'Endereço'].values[0] not in notinstalled:
+                        notinstalled.append(grouped_personalized.loc[n:n, 'Endereço'].values[0])
                     if st.session_state.polygon_df is not None:
-                        sla_maps.add_traces_on_map(st.session_state.grouped_points_figure, another_data=st.session_state.polygon_df, fillcolor='rgba(20, 2222, 169, 0.4)', name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
-                        sla_maps.add_traces_on_map(st.session_state.grouped_sla_figure, another_data=st.session_state.polygon_df, fillcolor='rgba(20, 222, 169, 0.4)', name=grouped_personalized.loc[n:n, 'Endereço'].values[0])                 
-                        sla_maps.add_traces_on_map(st.session_state.all_points_figure, another_data=st.session_state.polygon_df, fillcolor='rgba(20, 222, 169, 0.4)', name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
+                        sla_maps.add_traces_on_map(st.session_state.grouped_points_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
+                        sla_maps.add_traces_on_map(st.session_state.grouped_sla_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])                 
+                        sla_maps.add_traces_on_map(st.session_state.all_points_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
         
+        st.write(notinstalled)
         affected_points = st.session_state.main_data.loc[contained_index]
         affected_points.drop_duplicates(subset=['Matrícula'], inplace=True)
         qty_that_is_contained = affected_points.shape[0]
@@ -223,10 +232,11 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate):
             st.session_state.grouped_points_figure.update_mapboxes(center=dict(lat=lat, lon=lon), zoom=16)
     
     theme_position, *_ = st.columns(5)
-    theme_options = ['satellite-streets', 'open-street-map', 'satellite', 'streets', 'carto-positron', 'carto-darkmatter', 'dark', 'stamen-terrain', 'stamen-toner',
+    theme_options = ['carto-darkmatter', 'satellite-streets', 'open-street-map', 'satellite', 'streets', 'carto-positron', 'dark', 'stamen-terrain', 'stamen-toner',
                         'stamen-watercolor', 'basic', 'outdoors', 'light', 'white-bg']
     choosed_theme = theme_position.selectbox('Choose any theme', options=theme_options, index=0)
     update_figs_layout.update_fig_layouts([st.session_state.grouped_points_figure, st.session_state.grouped_sla_figure, st.session_state.all_points_figure], theme=choosed_theme)
+    
 
 
     tab_grouped_condo, tab_grouped_sla, tab_all_points = st.tabs(['SLA map grouped by address', 'SLA map grouped by average SLA', 'SLA map - All points'])

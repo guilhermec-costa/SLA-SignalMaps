@@ -44,7 +44,6 @@ class Queries:
     
     @st.cache_data
     def load_imporant_data(queries_responses, specific_response:str) -> pd.DataFrame:
-
         return pd.DataFrame(queries_responses[specific_response])
 
 class Connection:

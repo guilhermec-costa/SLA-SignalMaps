@@ -17,12 +17,12 @@ def sla_last_30days(data: pd.DataFrame):
 
     min_date = data['snapshot_date'].min()
     cur_date = datetime.datetime.today().date()
-    st.write(min_date)
     fig.update_layout(title=dict(text=f'SLA médio de {min_date} a {cur_date}', font=dict(size=26, family='roboto'), x=0.5, y=0.93, xanchor='center', yanchor='top'),
                       font=dict(family='roboto'), colorscale_sequential=px.colors.qualitative.G10,
-                      legend=dict(y=-0.2, orientation='h', font=dict(family='roboto', size=14)), height=500)
+                      legend=dict(y=1.1, x=0.010, orientation='h', font=dict(family='roboto', size=14)), height=500)
     
-    fig.update_xaxes(showgrid=True, griddash='solid', gridcolor='rgba(211, 211, 211, 0.2)', title=None, tickfont=dict(size=16, family='roboto'))
+    fig.update_xaxes(showgrid=True, griddash='solid', gridcolor='rgba(211, 211, 211, 0.2)', title=None, tickfont=dict(size=16, family='roboto'),
+                     tickvals=data['snapshot_date'], tickangle=45)
     fig.update_yaxes(title=dict(text=None, font=dict(family='roboto', size=18)), tickfont=dict(family='roboto', size=14), ticksuffix='%')
 
     update_figs_layout.alter_hover(fig=fig, mode='x unified')

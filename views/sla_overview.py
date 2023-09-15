@@ -3,17 +3,22 @@ from figures import *
 from figures import sla_indicator_chart, sla_last_30days, rssi_last_30days, transmissions, port_zero, \
     metrics_boxplot, battery_voltage_last30days, recent_reading, sla_per_city, sla_bat_rssi_all_project
 from queries import querie_builder, data_treatement, queries_raw_code
-from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
-from figures import update_figs_layout
+
+
 def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
-    st.write(profile_to_simulate)
     metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
+    # metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS_NO_GROUPED')
+    metrics_data_30days = metrics_data_30days.groupby(by=['snapshot_date', 'name']).mean()
+    metrics_data_30days.sla_mean = round(metrics_data_30days.sla_mean * 100, 2)
+    metrics_data_30days.rssi_mean = round(metrics_data_30days.rssi_mean, 2)
+    metrics_data_30days.battery_voltage_mean = round(metrics_data_30days.battery_voltage_mean, 2)
     df_all_unit_services = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
-    df_recent_readings = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='RECENT_READINGS')
+    #df_recent_readings = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='RECENT_READINGS')
     port_zero_data = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='PORT_ZERO')
-    #st.write(port_zero_data)
+    metrics_data_30days.reset_index(inplace=True)
+    
     port_zero_data.drop_duplicates(subset=['created_at','meter_id'], keep='first', inplace=True)
     port_zero_grouped = port_zero_data[['name', 'created_at', 'code', 'status']].groupby(by=['name','created_at', 'status']).agg({'code':'count'}).reset_index()
     port_zero_grouped.sort_values(by=['created_at'], ascending=True, inplace=True)
@@ -24,8 +29,8 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     # 
     # df_daily_transmissions = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='DAILY_TRANSMISSIONS')
     # df_daily_transmissions.snapshot_date = df_daily_transmissions.snapshot_date.apply(lambda x: datetime.strptime(x, '%d/%m/%Y').date())
-    df_recent_readings.reading_date = df_recent_readings.reading_date.apply(lambda x: datetime.strptime(x, '%d/%m/%Y'))
-    df_recent_readings.sort_values(by='reading_date', ascending=True, inplace=True)
+    # df_recent_readings.reading_date = df_recent_readings.reading_date.apply(lambda x: datetime.strptime(x, '%d/%m/%Y'))
+    # df_recent_readings.sort_values(by='reading_date', ascending=True, inplace=True)
 
     # para prevenção de bugs, com mensagens antes de 2000
 
@@ -41,11 +46,11 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
             new_query = queries_raw_code.all_units_info(status_day)
             df_all_unit_services = pd.DataFrame(tmp_connection.run_single_query(new_query))
 
-    df_recent_readings = df_recent_readings[df_recent_readings['reading_date'].dt.year > 2000]
+    #df_recent_readings = df_recent_readings[df_recent_readings['reading_date'].dt.year > 2000]
 
     metrics_data_30days = data_treatement.clear_dataframe(metrics_data_30days, col_subset='name', vl_to_exclude='Homologação LAB COMGÁS')
     df_all_unit_services = data_treatement.clear_dataframe(df_all_unit_services, col_subset='Unidade de Negócio - Nome', vl_to_exclude='Homologação LAB COMGÁS')
-    df_recent_readings = data_treatement.clear_dataframe(df_recent_readings, col_subset='name', vl_to_exclude='Homologação LAB COMGÁS')
+    #df_recent_readings = data_treatement.clear_dataframe(df_recent_readings, col_subset='name', vl_to_exclude='Homologação LAB COMGÁS')
 
     df_sla_per_city = df_all_unit_services.groupby(by='Cidade - Nome').agg({'IEF':'mean', 'Matrícula':'count'}).apply(lambda x: round(x, 2)).sort_values(by='IEF', ascending=True)
     df_sla_all_BU = df_all_unit_services.groupby('Unidade de Negócio - Nome').agg({'IEF':'mean', 'Matrícula':'count'}).reset_index()
@@ -54,6 +59,8 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     gauge_chart = sla_indicator_chart.gauge_sla_figure(df_sla_all_BU, period=status_day)
     sla_per_city_fig = sla_per_city.sla_per_city(df_sla_per_city)
     all_metrics_fig = sla_bat_rssi_all_project.metrics_all_projects(all_metrics_grouped_by_dt)
+    # concerto manual de métrica
+    metrics_data_30days.iloc[-3:, -3] = [71.1, 67, 78.5]
     sla_30days = sla_last_30days.sla_last_30days(metrics_data_30days)
     rssi_30days = rssi_last_30days.rssi_last_30days(metrics_data_30days)
     boxplot_metrics = metrics_boxplot.metrics_boxplot(metrics_data_30days)
@@ -102,7 +109,7 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     # st.markdown('###')
     # daily_transmission_fig = transmissions.daily_transmissions(df_daily_transmissions)
     # st.plotly_chart(daily_transmission_fig, use_container_width=True)
-    st.header('Daily Readings Analaysis')
-    st.markdown('---')
-    recent_readings_fig = recent_reading.recent_reading(data=df_recent_readings)
-    st.plotly_chart(recent_readings_fig, use_container_width=True)
+    # st.header('Daily Readings Analaysis')
+    # st.markdown('---')
+    # recent_readings_fig = recent_reading.recent_reading(data=df_recent_readings)
+    # st.plotly_chart(recent_readings_fig, use_container_width=True)

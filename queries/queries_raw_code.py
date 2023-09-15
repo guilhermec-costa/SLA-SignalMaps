@@ -2,71 +2,7 @@ import datetime
 from typing import List
 import streamlit as st
 
-city_codes = {
-    "SAO JOSÉ DOS CAMPOS": 433,
-    "GUARULHOS": 434,
-    "INDAIATUBA": 435,
-    "JACAREÍ": 436,
-    "OSASCO": 437,
-    "SANTANA DE PARNAIBA": 438,
-    "SUZANO": 439,
-    "FERRAZ DE VASCONCELOS": 440,
-    "TABOAO DA SERRA": 443,
-    "SAO PAULO": 447,
-    "BRAGANCA PAULISTA": 489,
-    "TAUBATE": 490,
-    "LORENA": 491,
-    "COTIA": 492,
-    "LIMEIRA": 494,
-    "MAUA": 495,
-    "SAO VICENTE": 496,
-    "SANTA BARBARA DOESTE": 497,
-    "VALINHOS": 498,
-    "ITAQUAQUECETUBA": 499,
-    "HORTOLANDIA": 500,
-    "PAULINIA": 501,
-    "SANTOS": 502,
-    "JANDIRA": 503,
-    "JACAREI": 504,
-    "ITUPEVA": 505,
-    "RIO CLARO": 506,
-    "RIBEIRAO PIRES": 507,
-    "SUMARE": 508,
-    "ITATIBA": 509,
-    "POA": 510,
-    "CACAPAVA": 511,
-    "MONTE MOR": 512,
-    "CAJAMAR": 513,
-    "SAO BERNARDO DO CAMPO": 514,
-    "TAU":99999,
-    "SAO CAETANO DO SUL": 518,
-    "EMBU DAS ARTES": 519,
-    "JUNDIAI": 520,
-    "SANTO ANDRE": 521,
-    "DIADEMA": 522,
-    "MOGI DAS CRUZES": 523,
-    "CAMPOS DO JORDAO": 524,
-    "CAMPINAS": 525,
-    "SAO JOSE DOS CAMPOS": 526,
-    "AMERICANA": 532,
-    "TAUBATÉ": 537,
-    "SÃO PAULO": 544,
-    "LORENA": 545,
-    "CAMPOS DO JORDAO": 546,
-    "SÃO PAULO": 547,
-    "SÃO JOSÉ DOS CAMPOS": 548,
-    "TABOAO DA SERRA": 549,
-    "GUARULHOS": 550,
-    "SANTANA DE PARNAIBA": 551,
-    "INDAIATUBA": 552,
-    "OSASCO": 553,
-    "SUZANO": 554,
-    "FERRAZ DE VASCONCELOS": 555,
-    "JACAREÍ": 556
-}
-
-
-BU_MAP_COMGAS = {'Inst. Comgás':750, 'Inst. COMGÁS':750, 'Comgás - Instalações 2022':502, 'Comgás - Instalações 2023':741, 'Homologação LAB COMGÁS':747}
+BU_MAP_COMGAS = {'Inst. COMGÁS':750, 'Comgás - Instalações 2022':502, 'Comgás - Instalações 2023':741, 'Homologação LAB COMGÁS':747}
 BU_MAP_SABESP = {'Condomínios':493, 'Macromedidores - Setorização':494, 'Grandes Consumidores':501}
 
 
@@ -78,12 +14,11 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
     if company_id == 34:
         bu_codes = ','.join(tuple(f"{BU_MAP_SABESP[bu]}" for bu in bussiness_unts)) if bussiness_unts != [] else ','.join(tuple(f"{value}" for value in BU_MAP_SABESP.values()))
 
-    st.write(bu_codes)
     conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
 
-    where_clause = f"dsl.snapshot_date_int = {conv_date} AND bu.id IN ({bu_codes}) AND r.status = 'ACTIVATED'"
+    where_clause = f"bu.id IN ({bu_codes}) AND r.status = 'ACTIVATED'"
     
-    where_conditions = [f"dsl.snapshot_date_int = {conv_date}", f"bu.id IN ({bu_codes})", "r.status = 'ACTIVATED'"]
+    where_conditions = [f"bu.id IN ({bu_codes})", "r.status = 'ACTIVATED'"]
     or_conditions = []
     and_conditions = []
 
@@ -108,8 +43,8 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
     
 
     ALL_UNITS = f"""
-    SELECT r.rgi "Matrícula", m.serial_number, bu.name "Unidade de Negócio - Nome", c.name "Cidade - Nome", cs.name "Grupo - Nome",
-            r.address "Endereço", r.latitude Latitude, r.longitude Longitude, round(dsl.ief * 100, 2) "IEF",
+    SELECT r.rgi "Matrícula", bu.name "Unidade de Negócio - Nome", c.name "Cidade - Nome", cs.name "Grupo - Nome",
+            r.address "Endereço", r.latitude Latitude, r.longitude Longitude, r.client_name, round(dsl.ief * 100, 2) "IEF",
             date(dsl.snapshot_date_int) "data snapshot"
     FROM daily_signal_logs dsl
     INNER JOIN residences r 
@@ -122,12 +57,14 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
             ON (bu.id = cs.business_unit_id)
     INNER JOIN companies comp
             ON comp.id = bu.company_id
-    INNER JOIN meters m
-            ON (m.residence_id = r.id)
-    WHERE {where_clause}"""
-
+    WHERE {where_clause}
+    AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+					    AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+        """
+        
 
     return ALL_UNITS
+
 
 def individual_comparison(addresses:List[str], residences:List[str], startdt:datetime.date, enddt:datetime.date, company_id) -> str:
     if addresses == [] and residences == []:
@@ -159,7 +96,7 @@ def individual_comparison(addresses:List[str], residences:List[str], startdt:dat
     
     INDIVIDUAL_COMPARISON = f"""
     SELECT bu.name as "Unidade de Negócio - Nome", c.name as "Cidade - Nome", r.address "Endereço", round(dsl.ief * 100, 2) "IEF", cs.name "Grupo - Nome", date(dsl.snapshot_date_int) "data snapshot",
-    r.latitude Latitude, r.longitude Longitude
+    r.latitude Latitude, r.longitude Longitude, r.client_name
     FROM daily_signal_logs dsl
     INNER JOIN residences r 
             ON (dsl.residence_id = r.id)
@@ -176,10 +113,11 @@ def individual_comparison(addresses:List[str], residences:List[str], startdt:dat
     """
     return INDIVIDUAL_COMPARISON
 
+
 def sla_over_time_all_units(company_id=38):
     SLA_OVER_TIME_ALL_UNITS = f"""
-    SELECT date(dsl.snapshot_date_int) snapshot_date, bu.name, round(avg(dsl.ief) * 100, 2) sla_mean,
-            round(avg(m.last_rssi), 2) rssi_mean, round(avg(m.battery_voltage), 2) battery_voltage_mean
+        SELECT date(dsl.snapshot_date_int) snapshot_date, bu.name, dsl.ief sla_mean,
+            m.last_rssi rssi_mean, m.battery_voltage battery_voltage_mean
     FROM daily_signal_logs dsl
     INNER JOIN residences r
             ON r.id = dsl.residence_id
@@ -191,11 +129,9 @@ def sla_over_time_all_units(company_id=38):
             ON bu.id = cs.business_unit_id
     INNER JOIN companies c
             ON c.id = bu.company_id
-    WHERE dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = 20230813)
+    WHERE dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = (date(now()) - interval '30' day))
                                                                         AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = date(now()))
         AND r.status = 'ACTIVATED' AND c.id = {company_id}
-    GROUP BY date(dsl.snapshot_date_int), bu.name
-    ORDER BY date(dsl.snapshot_date_int) ASC;
     """
 
     return SLA_OVER_TIME_ALL_UNITS

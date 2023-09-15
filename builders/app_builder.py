@@ -51,15 +51,14 @@ class App:
                 if not stop_querie_flag:
                     with st.spinner('Running queries.'):
                         main_df = queries_instancy.run_single_query(command=queries_raw_code.all_units_info(company_id=self.profile_to_simulate))
-                        sla_over_time = queries_instancy.run_single_query(command=queries_raw_code.sla_over_time_all_units(company_id=self.profile_to_simulate))
-                        recente_readings = queries_instancy.run_single_query(command=queries_raw_code.recent_readings(company_id=self.profile_to_simulate))
+                        #recente_readings = queries_instancy.run_single_query(command=queries_raw_code.recent_readings(company_id=self.profile_to_simulate))
                         port_zero = queries_instancy.run_single_query(command=queries_raw_code.port_zero(company_id=self.profile_to_simulate))
+                        sla_over_time = queries_instancy.run_single_query(command=queries_raw_code.sla_over_time_all_units(company_id=self.profile_to_simulate))
                         
                         #st.session_state.ALL_RESULTS = queries_instancy.run_queries(queries_instancy.all_queries_commands)
-
                         st.session_state.ALL_RESULTS['ALL_UNITS'] = main_df
                         st.session_state.ALL_RESULTS['SLA_OVER_TIME_ALL_UNITS'] = sla_over_time
-                        st.session_state.ALL_RESULTS['RECENT_READINGS'] = recente_readings
+                        #st.session_state.ALL_RESULTS['RECENT_READINGS'] = recente_readings
                         st.session_state.ALL_RESULTS['PORT_ZERO'] = port_zero
                     stop_querie_flag = st.empty()
 

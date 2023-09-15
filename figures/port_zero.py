@@ -8,7 +8,7 @@ def port_zero_plot(data, x_axis, y_axis, segregate_bu=False):
     fig.add_trace(go.Bar(x=data[x_axis], y=data[y_axis], name="Port 0 - All BU's", marker=dict(color=data[y_axis], colorscale='Viridis_r'),
                                     text=data[y_axis], textposition='outside',textfont=dict(size=16, family='roboto')))
     fig.update_layout(title=dict(text='Port 0 transmissions over the last 30 days', font=dict(size=26, family='roboto'), x=0.5, y=0.93, xanchor='center', yanchor='top'),
-                            font=dict(family='roboto'), height=530, template='presentation')
+                            font=dict(family='roboto'), height=600, template='presentation')
     fig.update_yaxes(showticklabels=False)
 
 

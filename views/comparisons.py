@@ -1,6 +1,6 @@
 import streamlit as st
 from queries import queries_raw_code, querie_builder
-from figures import individual_comparison, sla_maps
+from figures import individual_comparison, sla_maps, sla_improvement_bar
 import datetime
 import pandas as pd
 import numpy as np
@@ -10,17 +10,72 @@ from polygons import polygons
 from concurrent.futures import ThreadPoolExecutor
 from stqdm import stqdm
 import session_states
+from math import trunc
 
+INSTALLED_GATEWAYS = [
+    "EST SAO JUDAS, 190",
+    "AV PAULO AYRES,75,PARQUE PINHEIROS",
+    "AV SARAH VELOSO, 1200",
+    "R AGOSTINHO NAVARRO, 971",
+    "R ENG JOAO LANG, 50",
+    "R JUBAIR CELESTINO, 195",
+    "R PAULA RODRIGUES, 259",
+    "R BACTORIA,174",
+    "R PASCOAL RANIERI MAZZILLI,233",
+    "AV VIDA NOVA,156",
+    "AV MANOEL PEDRO PIMENTEL, 200",
+    "R PAULO ROBERTO TRIVELLI, 44",
+    "AV ODAIR SANTANELLI 100, PARQUE CECAP",
+    "R PAIM,235",
+    "R CAYOWAA,2046",
+    "AV ALEXANDRE MACKENZIE, 950",
+    "AV BUSSOCABA, 850",
+    "R VICENTE FERREIRA LEITE, 512",
+    "R PROF ARTUR RAMOS,178",
+    "R. Bergamota,470",
+    "AV DNA BLANDINA IGNEZ JULIO, 741",
+    "R. Camilo, 556",
+    "R MARIA DE LURDES GALVAO DE FRANCA, 640",
+    "TV TRES DE OUTUBRO, 7",
+    "AL CASA BRANCA,343",
+    "R CANARIO,1111"
+]
+NOT_INSTALLED = [
+    "R MASATO SAKAI,180",
+    "R NOVA DO TUPAROQUERA, 855",
+    "R CHARLES LAMPE, 120",
+    "R COM ANTUNES DOS SANTOS, 1640",
+    "R FREDERICO GUARINON,125,JARDIM AMPLIACAO",
+    "AV PE ESTANISLAU DE CAMPOS, 152",
+]
+
+def get_improvement(qtd, ief):
+    possible_improvement = (100 - ief)/100
+    points_to_improve = trunc(possible_improvement * qtd)
+    return points_to_improve
+
+def adjust_blocks(client_name):
+    client_name = client_name.__str__()
+    if client_name.__contains__(','):
+        comma_pos = client_name.find(',')
+        return client_name[:comma_pos]
+    if client_name.__contains__('-'):
+        hifen_pos = client_name.find('-')
+        return client_name[:hifen_pos]
+    return client_name
+    
 def geo_comparison(results, profile_to_simulate):
 
     session_states.initialize_session_states([('polygon_df_first_date', pd.DataFrame()), ('polygon_df_last_date', pd.DataFrame()), ('enable_around_affected_points', False)])
     tmp_connection = querie_builder.Queries(name='temporary_queries_comparison')
     df_all_unit_services = results['ALL_UNITS']
+    
+    INSTALLED_GATEWAYS_OF = [gtw for gtw in INSTALLED_GATEWAYS if gtw in df_all_unit_services['Endereço'].unique()]
 
     st.subheader('Comparasion analysis')
     with st.form('comparison_analysis'):
         c_address_comp, c_resid_comp = st.columns(2)
-        addresses_to_compare = c_address_comp.multiselect('Choose any address to compare', options=df_all_unit_services['Endereço'].unique())
+        addresses_to_compare = c_address_comp.multiselect('Choose any address to compare', options=df_all_unit_services['Endereço'].unique(), default=INSTALLED_GATEWAYS_OF)
         condos_to_compare = c_resid_comp.multiselect('Choose any residence to compare', options=df_all_unit_services['Grupo - Nome'].unique())
         start_dt_compare = c_address_comp.date_input('Start date', value=datetime.datetime.today() - datetime.timedelta(days=1))
         end_dt_compare = c_resid_comp.date_input('End date', value=datetime.datetime.today())
@@ -45,22 +100,34 @@ def geo_comparison(results, profile_to_simulate):
 
             comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare, company_id=profile_to_simulate)
             if comparison_query != "no data":
-
+                
                 comparison_results = pd.DataFrame(tmp_connection.run_single_query(command=comparison_query))
-                grouped_comparison = comparison_results.groupby(by=['Grupo - Nome', 'Endereço', 'data snapshot']).agg({'IEF':np.mean, 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
+                comparison_results['client_name'] = comparison_results['client_name'].apply(lambda x: adjust_blocks(x))
+                
+
+                grouped_comparison_per_block = comparison_results.groupby(by=['Grupo - Nome', 'Endereço', 'data snapshot', 'client_name']).agg(qtd=pd.NamedAgg('IEF', aggfunc='count'),
+                                                                                                        IEF=pd.NamedAgg('IEF', aggfunc='mean'),
+                                                                                                        Latitude=pd.NamedAgg('Latitude', 'mean'),
+                                                                                                        Longitude=pd.NamedAgg('Longitude', 'mean')
+                                                                                                        ).reset_index()
+
+                grouped_comparison = comparison_results.groupby(by=['Grupo - Nome', 'Endereço', 'data snapshot']).agg(qtd=pd.NamedAgg('IEF', aggfunc='count'),
+                                                                                                                      IEF=pd.NamedAgg('IEF', aggfunc='mean'),
+                                                                                                                      Latitude=pd.NamedAgg('Latitude', 'mean'),
+                                                                                                                      Longitude=pd.NamedAgg('Longitude', 'mean')
+                                                                                                                      ).reset_index()
                 grouped_comparison.IEF = grouped_comparison.IEF.round(2)
                 grouped_comparison.sort_values(by=['IEF'], ascending=[True], inplace=True)
                 grouped_comparison_firstday = grouped_comparison[grouped_comparison['data snapshot'] == start_dt_compare]
                 grouped_comparison_lastday = grouped_comparison[grouped_comparison['data snapshot'] == end_dt_compare]
-
+                
 
                 if st.session_state.enable_around_affected_points:
-                    with st.spinner('Calculate polygons...'):
-                        lat_list_first_date, lon_list_first_date = grouped_comparison_firstday['Latitude'].to_numpy(), grouped_comparison_firstday['Longitude'].to_numpy()
-                        lat_list_last_date, lon_list_last_date = grouped_comparison_lastday['Latitude'].to_numpy(), grouped_comparison_lastday['Longitude'].to_numpy()
-                        with ThreadPoolExecutor(4) as executor:
-                            list_of_polygons_first_date = list(executor.map(polygons.calculate_polygons, lat_list_first_date, lon_list_first_date, [5000]*len(lat_list_first_date)))
-                            list_of_polygons_last_date = list(executor.map(polygons.calculate_polygons, lat_list_last_date, lon_list_last_date, [5000]*len(lat_list_last_date)))
+                    lat_list_first_date, lon_list_first_date = grouped_comparison_firstday['Latitude'].to_numpy(), grouped_comparison_firstday['Longitude'].to_numpy()
+                    lat_list_last_date, lon_list_last_date = grouped_comparison_lastday['Latitude'].to_numpy(), grouped_comparison_lastday['Longitude'].to_numpy()
+                    with ThreadPoolExecutor(4) as executor:
+                        list_of_polygons_first_date = list(executor.map(polygons.calculate_polygons, lat_list_first_date, lon_list_first_date, [1000]*len(lat_list_first_date)))
+                        list_of_polygons_last_date = list(executor.map(polygons.calculate_polygons, lat_list_last_date, lon_list_last_date, [1000]*len(lat_list_last_date)))
                         
                         contained_index_first_date = []
                         contained_index_last_date = []
@@ -78,7 +145,6 @@ def geo_comparison(results, profile_to_simulate):
 
                                     df_first_date = df_first_date[~df_first_date.index.isin(contained_index_first_date)]
                                     df_last_date = df_last_date[~df_last_date.index.isin(contained_index_last_date)]
-               
 
 
                     affected_points_first_date = cp_first_day.loc[contained_index_first_date]
@@ -99,20 +165,49 @@ def geo_comparison(results, profile_to_simulate):
             map_left, map_right = st.columns(2)
             
             if st.session_state.enable_around_affected_points:
-                st.session_state.enable_around_affected_points = False
                 sla_map_left = sla_maps.plot_sla_map(data_sla=affected_points_first_date, title=f'Snapshot {start_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 sla_map_right = sla_maps.plot_sla_map(data_sla=affected_points_last_date, title=f'Snapshot {end_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
-                map_left.write(affected_points_first_date.IEF.mean())
-                map_left.write(affected_points_first_date.shape[0])
-                map_right.write(affected_points_last_date.IEF.mean())
-                map_right.write(affected_points_last_date.shape[0])
+                
+                start_date_sla = affected_points_first_date.IEF.mean()
+                end_date_sla = affected_points_last_date.IEF.mean()
+                start_date_shape = affected_points_first_date.shape[0]
+                end_date_shape = affected_points_last_date.shape[0]
+                st.session_state.enable_around_affected_points = False
 
             else:
+                start_date_sla = grouped_comparison_firstday.IEF.mean()
+                end_date_sla = grouped_comparison_lastday.IEF.mean()
+                
+                not_communcating = round((100 - end_date_sla)/100 * grouped_comparison_lastday.qtd, 0)
+                start_date_shape = grouped_comparison_firstday.shape[0]
+                end_date_shape = grouped_comparison_lastday.shape[0]
                 sla_map_left = sla_maps.plot_sla_map(data_sla=grouped_comparison_firstday, title=f'Snapshot {start_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 sla_map_right = sla_maps.plot_sla_map(data_sla=grouped_comparison_lastday, title=f'Snapshot {end_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
-
+                
+            st.markdown('---')
+            map_left.metric(f'SLA on {start_dt_compare}', value=f'{round(start_date_sla, 2)}%')
+            map_left.write(f'Existing points on map: {start_date_shape}')
+            
+            diff = round(end_date_sla - start_date_sla)
+            possible_improvement = round((100 - end_date_sla), 2)
+            possible_points_to_solve = trunc((possible_improvement/100) * grouped_comparison_lastday.qtd.sum())
+            map_right.metric(f'SLA on {end_dt_compare}', value=f'{round(end_date_sla, 2)}%', delta=f'{diff}%')
+            st.metric(f'Possible SLA improvement: ', value=possible_improvement,
+                             help=f'{possible_points_to_solve} installations')
+            map_right.write(f'Existing points on map: {end_date_shape}')
             map_left.plotly_chart(sla_map_left, use_container_width=True)
             map_right.plotly_chart(sla_map_right, use_container_width=True)
+            
+            grouped_comparison_lastday['points_to_improve'] = grouped_comparison_lastday[['qtd', 'IEF']].apply(lambda row: get_improvement(row.qtd, row.IEF), axis=1)
+            
+            st.subheader('geral')
+            #st.write(comparison_results.sort_values(by=['Grupo - Nome', 'client_name'], ascending=[True, True]))
+            grouped_comparison_per_block.sort_values(by=['Grupo - Nome', 'client_name', 'qtd'], inplace=True, ascending=[True, True, False])
+            st.write(grouped_comparison_per_block)
+            grouped_comparison_lastday.sort_values(by=['points_to_improve'], ascending=False, inplace=True)
+            #st.write(grouped_comparison_lastday)
+            improvement_sla_fig = sla_improvement_bar.sla_improvement(grouped_comparison_lastday, xaxes='Endereço', yaxes='points_to_improve')
+            st.plotly_chart(improvement_sla_fig, use_container_width=True)
         with tab_bars:
             fig_indiv_comparion = individual_comparison.individual_com_figure(data=grouped_comparison, start_date=start_dt_compare, end_date=end_dt_compare)
             st.plotly_chart(fig_indiv_comparion, use_container_width=True)
