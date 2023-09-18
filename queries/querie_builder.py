@@ -1,6 +1,7 @@
 import streamlit as st
 from typing import Union, List
 import pandas as pd
+from streamlit.connections import SQLConnection
 
 
 class Queries:
@@ -8,8 +9,10 @@ class Queries:
         self.all_queries_commands = []
         self.all_queries_names = []
         self.results = {}
-        self.connection = Connection.start_connection()
+        
+        # imprescendível definir o nome da conexão antes de iniciar a conexão
         self.name = name
+        self.connection = self.start_connection()
     
     def __repr__(self) -> str:
         return 'Queries()'
@@ -27,6 +30,9 @@ class Queries:
 
     def show_queries(self):
         st.write(self.all_queries_commands)
+        
+    def get_name(self):
+        return self.name
 
     @st.cache_data(ttl=36000)
     def run_queries(_self, query_commands):
@@ -36,7 +42,7 @@ class Queries:
     
     @st.cache_data(ttl=36000)
     def run_single_query(_self, command:str) -> None:
-        st.write(command)
+        #st.write(command)
         return _self.connection.query(sql=command)
 
     def verify_connection(self) -> Union[str, bool]:
@@ -45,13 +51,13 @@ class Queries:
     @st.cache_data
     def load_imporant_data(queries_responses, specific_response:str) -> pd.DataFrame:
         return pd.DataFrame(queries_responses[specific_response])
-
-class Connection:
+    
     @st.cache_resource
-    def start_connection():
+    def start_connection(_self):
+        #st.write(_self.name)
         try:
-            return st.experimental_connection(name='mysql', ttl=1200, type='sql')
+            return st.experimental_connection(name=_self.name, ttl=1200, type=SQLConnection)
         except Exception:
             st.error('Failed to connect to database.')
-            return None
+        return None
         

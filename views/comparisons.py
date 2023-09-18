@@ -27,16 +27,13 @@ INSTALLED_GATEWAYS = [
     "R PAULO ROBERTO TRIVELLI, 44",
     "AV ODAIR SANTANELLI 100, PARQUE CECAP",
     "R PAIM,235",
-    "R CAYOWAA,2046",
     "AV ALEXANDRE MACKENZIE, 950",
     "AV BUSSOCABA, 850",
     "R VICENTE FERREIRA LEITE, 512",
-    "R PROF ARTUR RAMOS,178",
     "R. Bergamota,470",
     "AV DNA BLANDINA IGNEZ JULIO, 741",
     "R. Camilo, 556",
     "R MARIA DE LURDES GALVAO DE FRANCA, 640",
-    "TV TRES DE OUTUBRO, 7",
     "AL CASA BRANCA,343",
     "R CANARIO,1111"
 ]
@@ -47,6 +44,9 @@ NOT_INSTALLED = [
     "R COM ANTUNES DOS SANTOS, 1640",
     "R FREDERICO GUARINON,125,JARDIM AMPLIACAO",
     "AV PE ESTANISLAU DE CAMPOS, 152",
+    "TV TRES DE OUTUBRO, 7",
+    "R CAYOWAA,2046",
+    "R PROF ARTUR RAMOS,178",
 ]
 
 def get_improvement(qtd, ief):
@@ -64,7 +64,7 @@ def adjust_blocks(client_name):
         return client_name[:hifen_pos]
     return client_name
     
-def geo_comparison(results, profile_to_simulate):
+def geo_comparison(results, profile_to_simulate, connection):
 
     session_states.initialize_session_states([('polygon_df_first_date', pd.DataFrame()), ('polygon_df_last_date', pd.DataFrame()), ('enable_around_affected_points', False)])
     tmp_connection = querie_builder.Queries(name='temporary_queries_comparison')
@@ -84,8 +84,8 @@ def geo_comparison(results, profile_to_simulate):
         if include_around_points:
             st.session_state.enable_around_affected_points = True
         if submit_comparion:
-            df_first_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=start_dt_compare, company_id=profile_to_simulate)))
-            df_last_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=end_dt_compare, company_id=profile_to_simulate)))
+            df_first_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=start_dt_compare, company_id=profile_to_simulate, connection=connection)))
+            df_last_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=end_dt_compare, company_id=profile_to_simulate, connection=connection)))
 
             df_first_date['Ponto'] = list(zip(df_first_date['Latitude'], df_first_date['Longitude']))
             df_first_date['Ponto'] = df_first_date['Ponto'].apply(lambda x: Point(x))
@@ -98,7 +98,8 @@ def geo_comparison(results, profile_to_simulate):
 
 
 
-            comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare, company_id=profile_to_simulate)
+            comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare, company_id=profile_to_simulate,
+                                                                      connection=connection)
             if comparison_query != "no data":
                 
                 comparison_results = pd.DataFrame(tmp_connection.run_single_query(command=comparison_query))

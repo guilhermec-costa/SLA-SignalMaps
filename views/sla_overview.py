@@ -6,8 +6,7 @@ from queries import querie_builder, data_treatement, queries_raw_code
 import pandas as pd
 import plotly.graph_objects as go
 
-
-def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
+def sla_overview(results:querie_builder.Queries, profile_to_simulate, connection) -> None:
     metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
     # metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS_NO_GROUPED')
     metrics_data_30days = metrics_data_30days.groupby(by=['snapshot_date', 'name']).mean()
@@ -60,7 +59,7 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate) -> None:
     sla_per_city_fig = sla_per_city.sla_per_city(df_sla_per_city)
     all_metrics_fig = sla_bat_rssi_all_project.metrics_all_projects(all_metrics_grouped_by_dt)
     # concerto manual de métrica
-    metrics_data_30days.iloc[-3:, -3] = [71.1, 67, 78.5]
+    #metrics_data_30days.iloc[-3:, -3] = [71.1, 67, 78.5]
     sla_30days = sla_last_30days.sla_last_30days(metrics_data_30days)
     rssi_30days = rssi_last_30days.rssi_last_30days(metrics_data_30days)
     boxplot_metrics = metrics_boxplot.metrics_boxplot(metrics_data_30days)
