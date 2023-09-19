@@ -37,13 +37,14 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate, connection
     st.header('SLA: metrics')
     st.markdown('---')
     st.markdown('###')
-    tmp_connection = querie_builder.Queries(name='temporary_queries')
+    tmp_connection = querie_builder.Queries(name=connection)
     with st.form(key='status_day'):
         status_day = st.date_input('Status day')
         submit_form = st.form_submit_button('Submit query')
         if submit_form:
-            new_query = queries_raw_code.all_units_info(status_day)
+            new_query = queries_raw_code.all_units_info(status_day, connection=connection)
             df_all_unit_services = pd.DataFrame(tmp_connection.run_single_query(new_query))
+            st.write(df_all_unit_services)
 
     #df_recent_readings = df_recent_readings[df_recent_readings['reading_date'].dt.year > 2000]
 

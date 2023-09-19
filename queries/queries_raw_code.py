@@ -18,6 +18,8 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
                         bu_codes = ','.join(tuple(f"{BU_MAP_SABESP[bu]}" for bu in bussiness_unts)) if bussiness_unts != [] else ','.join(tuple(f"{value}" for value in BU_MAP_SABESP.values()))
         if connection_name == 'laageriotsabesp':
                 bu_codes = '60814'
+                if period == datetime.datetime.today().date():
+                        period = datetime.datetime.today().date() - datetime.timedelta(days=1)
 
         conv_date = datetime.datetime.strftime(period, format='%Y%m%d')
 
@@ -63,9 +65,9 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
         INNER JOIN companies comp
                 ON comp.id = bu.company_id
         WHERE {where_clause}
-        AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-                                                AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-                """
+        AND dsl.snapshot_date_int = {conv_date}"""
+        #AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+        #                                    AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
 
         return ALL_UNITS
 
@@ -122,6 +124,9 @@ def individual_comparison(addresses:List[str], residences:List[str], startdt:dat
 
 def sla_over_time_all_units(company_id=38, **kwargs):
         connection_name = kwargs['connection']
+        if connection_name == 'laageriotsabesp':
+                extra_where = ["- interval '1' day"]
+        else: extra_where = ['']
         SLA_OVER_TIME_ALL_UNITS = f"""
         SELECT date(dsl.snapshot_date_int) snapshot_date, bu.name, dsl.ief sla_mean,
                 m.last_rssi rssi_mean, m.battery_voltage battery_voltage_mean
@@ -137,7 +142,7 @@ def sla_over_time_all_units(company_id=38, **kwargs):
         INNER JOIN companies c
                 ON c.id = bu.company_id
         WHERE dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = (date(now()) - interval '15' day))
-                                                                        AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = date(now()))
+                                                                        AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = date(now()){extra_where[0]})
         AND r.status = 'ACTIVATED' AND c.id = {company_id}
         """
 

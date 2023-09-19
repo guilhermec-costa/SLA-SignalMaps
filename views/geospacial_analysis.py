@@ -16,6 +16,7 @@ import googlemaps
 import json
 from .comparisons import get_improvement, INSTALLED_GATEWAYS, NOT_INSTALLED
 from math import trunc
+import plotly.graph_objects as go
 
 notinstalled = []
 def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connection):
@@ -26,10 +27,10 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
     gmaps = googlemaps.Client(key=st.secrets.googleapi.apikey)
 
     # variável de conexão temporária
-    tmp_connection = querie_builder.Queries(name='temporary_queries')
+    tmp_connection = querie_builder.Queries(name=connection)
 
-    jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     #inicialização dos dados necessários
+    jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     df_all_unit_services = results['ALL_UNITS']
     df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
@@ -81,21 +82,16 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
             .agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean, 'data snapshot':np.max}).reset_index()
             filtered_group.df.IEF = filtered_group.df.IEF.apply(lambda x: round(x, 2))
 
-
-            # filtered_group.validate_filter('general_filter', filtro_BU, refer_column='Unidade de Negócio - Nome')
-            # filtered_group.validate_filter('general_filter', st.session_state.address_filter, refer_column='Endereço')
-            # filtered_group.validate_filter('general_filter', st.session_state.residence_filter, refer_column='Grupo - Nome')    
-
     filtered_group.df = filtered_group.df[(filtered_group.df['Matrícula'] >= min_pontos) &
                                 (filtered_group.df['Matrícula'] <= max_pontos) &
                                 (filtered_group.df['IEF'] >= min_sla_condo) & (filtered_group.df['IEF'] <= max_sla_condo)]
-        
-    # filtered_data.general_filter(refer_column='Unidade de Negócio - Nome', opcs=filtered_group.df['Unidade de Negócio - Nome'])
-    # filtered_data.general_filter(refer_column='Endereço', opcs=filtered_group.df['Endereço'])
-    # filtered_data.general_filter(refer_column='Grupo - Nome', opcs=filtered_group.df['Grupo - Nome'])
-    # filtered_data.general_filter(refer_column='Cidade - Nome', opcs=filtered_group.df['Cidade - Nome'])
+
+    
+    # faz com que, quando o dataframe agrupado por endereço mude, o dataframe com todos os pontos mude também
+    filtered_data.df = filtered_data.df[filtered_data.df['Endereço'].isin(filtered_group.df['Endereço'])]
     cp_main_data = filtered_data.df.copy()
     
+    # expander para exibição de dados filtrados
     with st.expander('Filtered data:'):
         filtered_group.df.rename(columns={'Matrícula':'Pontos instalados'}, inplace=True)
         st.write(filtered_group.df.sort_values(by='Pontos instalados', ascending=False))
@@ -106,6 +102,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                     "IEF":st.column_config.ProgressColumn('SLA', min_value=0, max_value=100, format='%.2f')
                 })
 
+    # resumo de métricas dos dados filtrados
     theme_position, ponto_filtrado, sla_filtrado, opc_agrupamento, *_ = st.columns(5)
     theme_position.metric('Filtered addresses:', f'{filtered_group.df.shape[0]} ({round(filtered_group.df.shape[0] / len(agrupado_por_condo) * 100, 2)})%',
                         help=f'Total of addresses: {len(agrupado_por_condo)}')
@@ -136,6 +133,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
         pass
 
 
+    # formulário de configuração para cálculo de alcance de gateways
     st.subheader('Gateways analysis')
     with st.expander('Edit gateway options'):
         with st.form('gtw_form', clear_on_submit=False):
@@ -154,8 +152,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
 
             personalized_gtw = results['ALL_UNITS'][(results['ALL_UNITS']['Endereço'].isin(st.session_state.extra_selected_address)) | 
                                                              (results['ALL_UNITS']['Grupo - Nome'].isin(st.session_state.extra_selected_residence))]
-            
-            st.write(personalized_gtw)
+        
             gtw_range = c_gtw_range.number_input('Gateway range in meters: ', min_value=1, value=1000)
 
             grouped_personalized = personalized_gtw.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
@@ -172,12 +169,15 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                             
     if st.session_state.gtw_filters:
         st.session_state.gtw_filters = False
+        
+        # concorrência para cálculo de latitude e longitudes dos polígonos de cada endereço
         lat_list, lon_list = grouped_personalized['Latitude'].to_numpy(), grouped_personalized['Longitude'].to_numpy()
         with ThreadPoolExecutor(4) as executor:
             list_of_polygons = list(executor.map(polygons.calculate_polygons, lat_list, lon_list, [gtw_range]*len(lat_list)))
         
         contained_index = []
         with st.spinner('Calculating polygons...'):
+            # concorrência para cálculo de pontos afetados e plottagem dos polígonos nos gráficos
             with ThreadPoolExecutor(4) as executor:
                 for n in stqdm(range(len(lat_list))):
                     current_polygon, current_list_of_circles = list_of_polygons[n][0], list_of_polygons[n][1]
@@ -200,7 +200,6 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                         sla_maps.add_traces_on_map(st.session_state.grouped_sla_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])                 
                         sla_maps.add_traces_on_map(st.session_state.all_points_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
         
-        st.write(notinstalled)
         affected_points = filtered_data.df.loc[contained_index]
         affected_points.drop_duplicates(subset=['Matrícula'], inplace=True)
         qty_that_is_contained = affected_points.shape[0]
@@ -237,11 +236,16 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
     choosed_theme = theme_position.selectbox('Choose any theme', options=theme_options, index=0)
     update_figs_layout.update_fig_layouts([st.session_state.grouped_points_figure, st.session_state.grouped_sla_figure, st.session_state.all_points_figure], theme=choosed_theme)
     
-
-
+    def handle_selection(event, eventdata):
+        st.write('NA FUNÇÃO')
+        if eventdata:
+            selected_points = eventdata["Latitude"]
+            st.write(selected_points)
+            
     tab_grouped_condo, tab_grouped_sla, tab_all_points = st.tabs(['SLA map grouped by address', 'SLA map grouped by average SLA', 'SLA map - All points'])
     with tab_grouped_condo:
         st.plotly_chart(st.session_state.grouped_points_figure, use_container_width=True)
+        st.session_state.grouped_points_figure.data[0].on_selection(handle_selection)
     with tab_grouped_sla:
         st.plotly_chart(st.session_state.grouped_sla_figure, use_container_width=True)
     with tab_all_points:

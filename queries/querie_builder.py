@@ -42,17 +42,17 @@ class Queries:
     
     @st.cache_data(ttl=36000)
     def run_single_query(_self, command:str) -> None:
-        #st.write(command)
+        st.write(command)
         return _self.connection.query(sql=command)
 
     def verify_connection(self) -> Union[str, bool]:
         return 'success' if self.connection is not None else False
     
-    @st.cache_data
+    @st.cache_data(ttl=36000)
     def load_imporant_data(queries_responses, specific_response:str) -> pd.DataFrame:
         return pd.DataFrame(queries_responses[specific_response])
     
-    @st.cache_resource
+    @st.cache_resource(ttl=36000)
     def start_connection(_self):
         #st.write(_self.name)
         try:

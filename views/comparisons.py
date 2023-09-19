@@ -38,15 +38,20 @@ INSTALLED_GATEWAYS = [
     "R CANARIO,1111"
 ]
 NOT_INSTALLED = [
-    "R MASATO SAKAI,180",
-    "R NOVA DO TUPAROQUERA, 855",
-    "R CHARLES LAMPE, 120",
-    "R COM ANTUNES DOS SANTOS, 1640",
-    "R FREDERICO GUARINON,125,JARDIM AMPLIACAO",
-    "AV PE ESTANISLAU DE CAMPOS, 152",
-    "TV TRES DE OUTUBRO, 7",
     "R CAYOWAA,2046",
     "R PROF ARTUR RAMOS,178",
+    "TV TRES DE OUTUBRO, 7",
+    "AV PE ESTANISLAU DE CAMPOS, 152",
+    "R CHARLES LAMPE, 120",
+    "R NOVA DO TUPAROQUERA, 855",
+    "R COM ANTUNES DOS SANTOS, 1640",
+    "R MASATO SAKAI,180",
+    "R FREDERICO GUARINON,125,JARDIM AMPLIACAO",
+    "AV EDMUNDO AMARAL, 3935",
+    "AL IBERICA,285",
+    "R CATIARA,267,JARDIM UMARIZAL",
+    "R JOSE FERREIRA DE CASTRO,173,VILA AMELIA",
+    "AL CORES DA MATA,1973"
 ]
 
 def get_improvement(qtd, ief):
@@ -67,7 +72,7 @@ def adjust_blocks(client_name):
 def geo_comparison(results, profile_to_simulate, connection):
 
     session_states.initialize_session_states([('polygon_df_first_date', pd.DataFrame()), ('polygon_df_last_date', pd.DataFrame()), ('enable_around_affected_points', False)])
-    tmp_connection = querie_builder.Queries(name='temporary_queries_comparison')
+    tmp_connection = querie_builder.Queries(name=connection)
     df_all_unit_services = results['ALL_UNITS']
     
     INSTALLED_GATEWAYS_OF = [gtw for gtw in INSTALLED_GATEWAYS if gtw in df_all_unit_services['Endereço'].unique()]
@@ -111,6 +116,10 @@ def geo_comparison(results, profile_to_simulate, connection):
                                                                                                         Latitude=pd.NamedAgg('Latitude', 'mean'),
                                                                                                         Longitude=pd.NamedAgg('Longitude', 'mean')
                                                                                                         ).reset_index()
+                
+                grouped_comparison_per_qty = comparison_results.groupby(by=['Grupo - Nome', 'Endereço']).agg(qtd=pd.NamedAgg('IEF', aggfunc='count'),
+                                                                                        IEF=pd.NamedAgg('IEF', aggfunc='mean'),
+                                                                                        ).reset_index()
 
                 grouped_comparison = comparison_results.groupby(by=['Grupo - Nome', 'Endereço', 'data snapshot']).agg(qtd=pd.NamedAgg('IEF', aggfunc='count'),
                                                                                                                       IEF=pd.NamedAgg('IEF', aggfunc='mean'),
@@ -201,11 +210,14 @@ def geo_comparison(results, profile_to_simulate, connection):
             
             grouped_comparison_lastday['points_to_improve'] = grouped_comparison_lastday[['qtd', 'IEF']].apply(lambda row: get_improvement(row.qtd, row.IEF), axis=1)
             
-            st.subheader('geral')
+            st.subheader('Análise de repetidores')
+            per_block, per_qty = st.columns(2)
             #st.write(comparison_results.sort_values(by=['Grupo - Nome', 'client_name'], ascending=[True, True]))
             grouped_comparison_per_block.sort_values(by=['Grupo - Nome', 'client_name', 'qtd'], inplace=True, ascending=[True, True, False])
-            st.write(grouped_comparison_per_block)
+            per_block.write(grouped_comparison_per_block)
+            
             grouped_comparison_lastday.sort_values(by=['points_to_improve'], ascending=False, inplace=True)
+            per_qty.write(grouped_comparison_lastday)
             #st.write(grouped_comparison_lastday)
             improvement_sla_fig = sla_improvement_bar.sla_improvement(grouped_comparison_lastday, xaxes='Endereço', yaxes='points_to_improve')
             st.plotly_chart(improvement_sla_fig, use_container_width=True)
