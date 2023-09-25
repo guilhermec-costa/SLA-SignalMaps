@@ -64,11 +64,14 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
                 ON (bu.id = cs.business_unit_id)
         INNER JOIN companies comp
                 ON comp.id = bu.company_id
-        WHERE {where_clause}
-        AND dsl.snapshot_date_int = {conv_date}"""
-        #AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-        #                                    AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-
+        WHERE {where_clause}"""
+        
+        if connection_name == 'laageriotcomgas':
+                ALL_UNITS += f""" AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+                                          AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+                                """
+        if connection_name == 'laageriotsabesp':
+                ALL_UNITS += f' AND dsl.snapshot_date_int = {conv_date}'
         return ALL_UNITS
 
 
@@ -191,84 +194,93 @@ def port_zero(company_id=38, **kwargs):
         """
         return PORT_ZERO
 
-# DAILY_TRANSMISSIONS = """
-# SELECT bu.name, from_unixtime(rr.created_at_uts, '%d/%m/%Y') snapshot_date, count(bu.name) qtd_transmissoes,
-# 	q2.total_de_inst_acumulado pontos_ativos, (q2.total_de_inst_acumulado) * 2 qtd_transmissoes_meta
-# FROM recent_readings rr
-# INNER JOIN meters m
-# 	ON m.id = rr.meter_id
-# INNER JOIN residences res
-# 	ON res.id = m.residence_id 
-# INNER JOIN commercial_services cs
-# 	ON cs.id = res.commercial_service_id
-# INNER JOIN business_units bu
-# 	ON bu.id = cs.business_unit_id
-# INNER JOIN
-# 	( # querie para contagem do total de instalações
-# 	SELECT bu1.name, count(*) total_de_inst FROM residences r
-# 	INNER JOIN commercial_services cs1 
-# 		ON cs1.id = r.commercial_service_id
-# 	INNER JOIN business_units bu1 
-# 		ON bu1.id = cs1.business_unit_id
-# 	WHERE bu1.name IN ('Inst. Comgás', 'Comgás - Instalações 2023') AND r.status = 'ACTIVATED'
-# 	-- WHERE cs1.name LIKE '%COND. SAO CRISTOVAO%'
-# 	GROUP BY bu1.name
-# 		) AS quantia_pontos
-# 	ON quantia_pontos.name = bu.name
-# INNER JOIN (
-# 	SELECT q1.activated_at, q1.name, SUM(q2.total_de_inst) AS total_de_inst_acumulado
-# 	FROM (
-# 			SELECT date(activated_at) AS activated_at, bu1.name, count(*) AS total_de_inst
-# 			FROM residences r
-# 			INNER JOIN commercial_services cs1 
-# 				ON cs1.id = r.commercial_service_id
-# 			INNER JOIN business_units bu1 
-# 				ON bu1.id = cs1.business_unit_id
-# 			WHERE bu1.name IN ('Inst. Comgás', 'Comgás - Instalações 2023') AND r.status = 'ACTIVATED'
-# 			GROUP BY date(activated_at), bu1.name
-# 	) AS q1
-# 	INNER JOIN (
-# 	    SELECT 
-# 	        date(activated_at) AS activated_at, 
-# 	        bu1.name, 
-# 	        count(*) AS total_de_inst
-# 	    FROM residences r1
-# 	    INNER JOIN commercial_services cs1 
-# 	        ON cs1.id = r1.commercial_service_id
-# 	    INNER JOIN business_units bu1 
-# 	        ON bu1.id = cs1.business_unit_id
-# 	    WHERE bu1.name IN ('Inst. Comgás', 'Comgás - Instalações 2023') AND r1.status = 'ACTIVATED'
-# 	    GROUP BY date(activated_at), bu1.name
-# 	) AS q2 ON q1.name = q2.name AND q1.activated_at >= q2.activated_at
-# 	GROUP BY q1.activated_at, q1.name, q1.total_de_inst
-# 	ORDER BY q1.name, q1.activated_at
-# ) q2 ON ((q2.name = bu.name) AND date_format(q2.activated_at, '%d/%m/%Y') = from_unixtime(rr.created_at_uts, '%d/%m/%Y'))
-# WHERE rr.recovered = FALSE AND res.status = 'ACTIVATED' AND bu.name IN ('Inst. Comgás', 'Comgás - Instalações 2023')
-# GROUP BY from_unixtime(rr.created_at_uts, '%d/%m/%Y'), bu.name
-# UNION (
-# -- QUERY DE INST ACUMULATIVAS E TRANSMISSÕES PARA COMGAS 22 E INST COMGAS
-# SELECT bu.name, from_unixtime(rr.created_at_uts, '%d/%m/%Y') snapshot_date, count(bu.name) qtd_transmissoes,
-# 	quantia_pontos.total_de_inst pontos_ativos, (quantia_pontos.total_de_inst) * 2 qtd_transmissoes_meta
-# FROM recent_readings rr
-# INNER JOIN meters m
-# 	ON m.id = rr.meter_id
-# INNER JOIN residences res
-# 	ON res.id = m.residence_id 
-# INNER JOIN commercial_services cs
-# 	ON cs.id = res.commercial_service_id
-# INNER JOIN business_units bu
-# 	ON bu.id = cs.business_unit_id
-# INNER JOIN
-# 	( # querie para contagem do total de instalações
-# 	SELECT bu1.name, count(*) total_de_inst FROM residences r
-# 	INNER JOIN commercial_services cs1 
-# 		ON cs1.id = r.commercial_service_id
-# 	INNER JOIN business_units bu1 
-# 		ON bu1.id = cs1.business_unit_id
-# 	WHERE bu1.name IN ('Comgás - Instalações 2022') AND r.status = 'ACTIVATED'
-# 	GROUP BY bu1.name
-# 		) AS quantia_pontos
-# 	ON quantia_pontos.name = bu.name
-# WHERE rr.recovered = FALSE AND res.status = 'ACTIVATED' AND bu.name IN ('Comgás - Instalações 2022')
-# GROUP BY from_unixtime(rr.created_at_uts, '%d/%m/%Y'), bu.name)
-# """
+# def daily_transmissions(company_id=38, **kwargs):
+#         connection_name = kwargs['connection']
+#         if company_id == 38:
+#                 codes = '(750,502,741,747)'
+#         if company_id == 34:
+#                 codes = '(493, 494, 501)'
+#         if company_id == 4:
+#                 codes = '(60814)'
+        
+#         DAILY_TRANSMISSIONS = f"""
+#         SELECT bu.name, from_unixtime(rr.created_at_uts, '%d/%m/%Y') snapshot_date, count(bu.name) qtd_transmissoes,
+#                 q2.total_de_inst_acumulado pontos_ativos, (q2.total_de_inst_acumulado) * 2 qtd_transmissoes_meta
+#         FROM recent_readings rr
+#         INNER JOIN meters m
+#                 ON m.id = rr.meter_id
+#         INNER JOIN residences res
+#                 ON res.id = m.residence_id 
+#         INNER JOIN commercial_services cs
+#                 ON cs.id = res.commercial_service_id
+#         INNER JOIN business_units bu
+#                 ON bu.id = cs.business_unit_id
+#         INNER JOIN
+#                 (
+#                 SELECT bu1.name, count(*) total_de_inst FROM residences r
+#                 INNER JOIN commercial_services cs1 
+#                         ON cs1.id = r.commercial_service_id
+#                 INNER JOIN business_units bu1 
+#                         ON bu1.id = cs1.business_unit_id
+#                 WHERE bu1.name IN {codes} AND r.status = 'ACTIVATED'
+#                 GROUP BY bu1.name
+#                         ) AS quantia_pontos
+#                 ON quantia_pontos.name = bu.name
+#         INNER JOIN (
+#                 SELECT q1.activated_at, q1.name, SUM(q2.total_de_inst) AS total_de_inst_acumulado
+#                 FROM (
+#                                 SELECT date(activated_at) AS activated_at, bu1.name, count(*) AS total_de_inst
+#                                 FROM residences r
+#                                 INNER JOIN commercial_services cs1 
+#                                         ON cs1.id = r.commercial_service_id
+#                                 INNER JOIN business_units bu1 
+#                                         ON bu1.id = cs1.business_unit_id
+#                                 WHERE bu1.name IN {codes} AND r.status = 'ACTIVATED'
+#                                 GROUP BY date(activated_at), bu1.name
+#                 ) AS q1
+#                 INNER JOIN (
+#                 SELECT 
+#                         date(activated_at) AS activated_at, 
+#                         bu1.name, 
+#                         count(*) AS total_de_inst
+#                 FROM residences r1
+#                 INNER JOIN commercial_services cs1 
+#                         ON cs1.id = r1.commercial_service_id
+#                 INNER JOIN business_units bu1 
+#                         ON bu1.id = cs1.business_unit_id
+#                 WHERE bu1.name IN {codes} AND r1.status = 'ACTIVATED'
+#                 GROUP BY date(activated_at), bu1.name
+#                 ) AS q2 ON q1.name = q2.name AND q1.activated_at >= q2.activated_at
+#                 GROUP BY q1.activated_at, q1.name, q1.total_de_inst
+#                 ORDER BY q1.name, q1.activated_at
+#         ) q2 ON ((q2.name = bu.name) AND date_format(q2.activated_at, '%d/%m/%Y') = from_unixtime(rr.created_at_uts, '%d/%m/%Y'))
+#         WHERE rr.recovered = FALSE AND res.status = 'ACTIVATED' AND bu.name IN {codes}
+#         GROUP BY from_unixtime(rr.created_at_uts, '%d/%m/%Y'), bu.name"""
+        # UNION (
+        # -- QUERY DE INST ACUMULATIVAS E TRANSMISSÕES PARA COMGAS 22 E INST COMGAS
+        # SELECT bu.name, from_unixtime(rr.created_at_uts, '%d/%m/%Y') snapshot_date, count(bu.name) qtd_transmissoes,
+        #         quantia_pontos.total_de_inst pontos_ativos, (quantia_pontos.total_de_inst) * 2 qtd_transmissoes_meta
+        # FROM recent_readings rr
+        # INNER JOIN meters m
+        #         ON m.id = rr.meter_id
+        # INNER JOIN residences res
+        #         ON res.id = m.residence_id 
+        # INNER JOIN commercial_services cs
+        #         ON cs.id = res.commercial_service_id
+        # INNER JOIN business_units bu
+        #         ON bu.id = cs.business_unit_id
+        # INNER JOIN
+        #         ( # querie para contagem do total de instalações
+        #         SELECT bu1.name, count(*) total_de_inst FROM residences r
+        #         INNER JOIN commercial_services cs1 
+        #                 ON cs1.id = r.commercial_service_id
+        #         INNER JOIN business_units bu1 
+        #                 ON bu1.id = cs1.business_unit_id
+        #         WHERE bu1.name IN ('Comgás - Instalações 2022') AND r.status = 'ACTIVATED'
+        #         GROUP BY bu1.name
+        #                 ) AS quantia_pontos
+        #         ON quantia_pontos.name = bu.name
+        # WHERE rr.recovered = FALSE AND res.status = 'ACTIVATED' AND bu.name IN ('Comgás - Instalações 2022')
+        # GROUP BY from_unixtime(rr.created_at_uts, '%d/%m/%Y'), bu.name)
+        # """
+        return DAILY_TRANSMISSIONS

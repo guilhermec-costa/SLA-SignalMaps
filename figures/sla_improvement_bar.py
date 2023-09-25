@@ -1,7 +1,8 @@
 import plotly.graph_objects as go
 from . import update_figs_layout
-import streamlit as st
+from streamlit import cache_data
 
+@cache_data
 def sla_improvement(data, xaxes, yaxes):
     fig = go.Figure()
     fig.add_trace(go.Bar(x=data[xaxes], y=data[yaxes], text=data[yaxes], marker=dict(color=data[yaxes], colorscale='Viridis_r'),

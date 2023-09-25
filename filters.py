@@ -1,6 +1,5 @@
 # all available filters (dashboards)
 import streamlit as st
-import pandas as pd
 
 style_markdown_warning = """
 color: rgb(255, 255, 194);
@@ -27,7 +26,7 @@ margin: 4px;
 
 class Filters:
 
-    def __init__(self, data_frame: pd.DataFrame) -> None:
+    def __init__(self, data_frame) -> None:
         self.df = data_frame
         self.c1_date, self.c2_date = st.columns(2)
     

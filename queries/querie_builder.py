@@ -48,7 +48,7 @@ class Queries:
     def verify_connection(self) -> Union[str, bool]:
         return 'success' if self.connection is not None else False
     
-    @st.cache_data(ttl=36000)
+    @st.cache_data
     def load_imporant_data(queries_responses, specific_response:str) -> pd.DataFrame:
         return pd.DataFrame(queries_responses[specific_response])
     

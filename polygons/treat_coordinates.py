@@ -17,6 +17,8 @@ for conjunto in cordenadas:
 
 df = pd.DataFrame(data={'Latitude':latitudes, 'Longitude':longitudes})
 print(df)
+
+# salva as coordenadas do arquivo kml
 # df.to_csv('apenas_jardins_coordenadas.csv', sep=',', index=False)
 # print(len(latitudes), len(longitudes))
 # print(latitudes)

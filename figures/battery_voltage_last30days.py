@@ -1,5 +1,4 @@
 import plotly.graph_objects as go
-import plotly.express as px
 import pandas as pd
 from . import update_figs_layout
 import streamlit as st

@@ -1,9 +1,9 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import plotly.express as px
 from . import update_figs_layout
-import streamlit as st
+from streamlit import cache_data
 
+@cache_data
 def metrics_all_projects(data):
     fig = make_subplots(rows=1, cols=3, shared_xaxes=True,
                         subplot_titles=(('SLA: all businnes units', 'RSSI: all business units', 'Battery voltage: all business units')))
