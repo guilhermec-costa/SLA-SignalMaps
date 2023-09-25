@@ -25,7 +25,6 @@ def convert_df(df):
 
 notinstalled = []
 def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connection):
-    st.write(connection, profile_to_simulate)
     # inicialização das variáveis de sessão
     session_states.initialize_session_states([('main_data', pd.DataFrame()), ('grouped_data', pd.DataFrame()), ('general_data', pd.DataFrame())])
 
@@ -191,7 +190,6 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
         
         contained_index = []
         with st.spinner('Calculating polygons...'):
-            st.write(cp_main_data.itertuples())
             # concorrência para cálculo de pontos afetados e plottagem dos polígonos nos gráficos
             start = time.perf_counter()
             with ThreadPoolExecutor(4) as executor:
