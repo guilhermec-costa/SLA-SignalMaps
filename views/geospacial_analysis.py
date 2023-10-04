@@ -83,6 +83,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
             .agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean, 'data snapshot':np.max}).reset_index()
             
             filtered_group.df.IEF = filtered_group.df.IEF.apply(lambda x: round(x, 2))
+            results['ALL_UNITS'] = filtered_data.df
 
     filtered_group.df = filtered_group.df[(filtered_group.df['Matrícula'] >= min_pontos) &
                                 (filtered_group.df['Matrícula'] <= max_pontos) &
