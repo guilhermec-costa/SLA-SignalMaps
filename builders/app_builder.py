@@ -33,6 +33,7 @@ class App:
     def build_app(self):
         st.cache_resource.clear()
         self.choosed_connection = 'laageriotcomgas'
+        st.write(self.choosed_connection)
         queries_instancy = querie_builder.Queries(name=self.choosed_connection)
         connection_state = queries_instancy.verify_connection()
         if connection_state == 'success':

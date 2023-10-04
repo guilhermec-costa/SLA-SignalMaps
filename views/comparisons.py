@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from stqdm import stqdm
 import session_states
 from math import trunc
+from queries import data_treatement
 
 INSTALLED_GATEWAYS = [
     "EST SAO JUDAS, 190",
@@ -35,23 +36,29 @@ INSTALLED_GATEWAYS = [
     "R. Camilo, 556",
     "R MARIA DE LURDES GALVAO DE FRANCA, 640",
     "AL CASA BRANCA,343",
-    "R CANARIO,1111"
+    "R CANARIO,1111",
+    "R CAYOWAA,2046",
+    "TV TRES DE OUTUBRO, 7",
 ]
 NOT_INSTALLED = [
-    "R CAYOWAA,2046",
-    "R PROF ARTUR RAMOS,178",
-    "TV TRES DE OUTUBRO, 7",
-    "AV PE ESTANISLAU DE CAMPOS, 152",
-    "R CHARLES LAMPE, 120",
-    "R NOVA DO TUPAROQUERA, 855",
-    "R COM ANTUNES DOS SANTOS, 1640",
     "R MASATO SAKAI,180",
-    "R FREDERICO GUARINON,125,JARDIM AMPLIACAO",
-    "AV EDMUNDO AMARAL, 3935",
-    "AL IBERICA,285",
+    "R NOVA DO TUPAROQUERA, 855",
     "R CATIARA,267,JARDIM UMARIZAL",
+    "R CHARLES LAMPE, 120",
+    "R COM ANTUNES DOS SANTOS, 1640",
+    "R ALFREDO MENDES DA SILVA, 395",
+    "R TRAJANO REIS, 186",
     "R JOSE FERREIRA DE CASTRO,173,VILA AMELIA",
-    "AL CORES DA MATA,1973"
+    "R FREDERICO GUARINON,125,JARDIM AMPLIACAO",
+    "AL IBERICA,285",
+    "R PROF ARTUR RAMOS,178",
+    "AL CORES DA MATA,1973",
+    "AV EDMUNDO AMARAL, 3935",
+    "R MAURO,585",
+    "AV PE ESTANISLAU DE CAMPOS, 152",
+    "AV NOVE DE JULHO,544",
+    "R DA CONSOLACAO,3064",
+    "R DR ALFREDO ELLIS,301"
 ]
 
 def get_improvement(qtd, ief):
@@ -74,6 +81,7 @@ def geo_comparison(results, profile_to_simulate, connection):
     session_states.initialize_session_states([('polygon_df_first_date', pd.DataFrame()), ('polygon_df_last_date', pd.DataFrame()), ('enable_around_affected_points', False)])
     tmp_connection = querie_builder.Queries(name=connection)
     df_all_unit_services = results['ALL_UNITS']
+    jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     
     INSTALLED_GATEWAYS_OF = [gtw for gtw in INSTALLED_GATEWAYS if gtw in df_all_unit_services['Endereço'].unique()]
 
@@ -89,20 +97,6 @@ def geo_comparison(results, profile_to_simulate, connection):
         if include_around_points:
             st.session_state.enable_around_affected_points = True
         if submit_comparion:
-            df_first_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=start_dt_compare, company_id=profile_to_simulate, connection=connection)))
-            df_last_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=end_dt_compare, company_id=profile_to_simulate, connection=connection)))
-
-            df_first_date['Ponto'] = list(zip(df_first_date['Latitude'], df_first_date['Longitude']))
-            df_first_date['Ponto'] = df_first_date['Ponto'].apply(lambda x: Point(x))
-
-            df_last_date['Ponto'] = list(zip(df_last_date['Latitude'], df_last_date['Longitude']))
-            df_last_date['Ponto'] = df_last_date['Ponto'].apply(lambda x: Point(x))
-
-            cp_first_day = df_first_date.copy()
-            cp_last_day = df_last_date.copy()
-
-
-
             comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare, company_id=profile_to_simulate,
                                                                       connection=connection)
             if comparison_query != "no data":
@@ -133,6 +127,17 @@ def geo_comparison(results, profile_to_simulate, connection):
                 
 
                 if st.session_state.enable_around_affected_points:
+                    df_first_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=start_dt_compare, company_id=profile_to_simulate, connection=connection)))
+                    df_last_date = pd.DataFrame(tmp_connection.run_single_query(command=queries_raw_code.all_units_info(period=end_dt_compare, company_id=profile_to_simulate, connection=connection)))
+
+                    df_first_date['Ponto'] = list(zip(df_first_date['Latitude'], df_first_date['Longitude']))
+                    df_first_date['Ponto'] = df_first_date['Ponto'].apply(lambda x: Point(x))
+
+                    df_last_date['Ponto'] = list(zip(df_last_date['Latitude'], df_last_date['Longitude']))
+                    df_last_date['Ponto'] = df_last_date['Ponto'].apply(lambda x: Point(x))
+
+                    cp_first_day = df_first_date.copy()
+                    cp_last_day = df_last_date.copy()
                     lat_list_first_date, lon_list_first_date = grouped_comparison_firstday['Latitude'].to_numpy(), grouped_comparison_firstday['Longitude'].to_numpy()
                     lat_list_last_date, lon_list_last_date = grouped_comparison_lastday['Latitude'].to_numpy(), grouped_comparison_lastday['Longitude'].to_numpy()
                     with ThreadPoolExecutor(4) as executor:
@@ -177,7 +182,6 @@ def geo_comparison(results, profile_to_simulate, connection):
             if st.session_state.enable_around_affected_points:
                 sla_map_left = sla_maps.plot_sla_map(data_sla=affected_points_first_date, title=f'Snapshot {start_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 sla_map_right = sla_maps.plot_sla_map(data_sla=affected_points_last_date, title=f'Snapshot {end_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
-                
                 start_date_sla = affected_points_first_date.IEF.mean()
                 end_date_sla = affected_points_last_date.IEF.mean()
                 start_date_shape = affected_points_first_date.shape[0]
@@ -193,10 +197,11 @@ def geo_comparison(results, profile_to_simulate, connection):
                 end_date_shape = grouped_comparison_lastday.shape[0]
                 sla_map_left = sla_maps.plot_sla_map(data_sla=grouped_comparison_firstday, title=f'Snapshot {start_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
                 sla_map_right = sla_maps.plot_sla_map(data_sla=grouped_comparison_lastday, title=f'Snapshot {end_dt_compare}', colmn_to_base_color='IEF', group_type='IEF', theme='carto-darkmatter', include_bu_city_info=False)
-                
+            sla_maps.add_traces_on_map(sla_map_left, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
+            sla_maps.add_traces_on_map(sla_map_right, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
             st.markdown('---')
             map_left.metric(f'SLA on {start_dt_compare}', value=f'{round(start_date_sla, 2)}%')
-            map_left.write(f'Existing points on map: {start_date_shape}')
+            #map_left.write(f'Existing points on map: {start_date_shape}')
             
             diff = round(end_date_sla - start_date_sla)
             possible_improvement = round((100 - end_date_sla), 2)
@@ -204,7 +209,7 @@ def geo_comparison(results, profile_to_simulate, connection):
             map_right.metric(f'SLA on {end_dt_compare}', value=f'{round(end_date_sla, 2)}%', delta=f'{diff}%')
             st.metric(f'Possible SLA improvement: ', value=possible_improvement,
                              help=f'{possible_points_to_solve} installations')
-            map_right.write(f'Existing points on map: {end_date_shape}')
+            #map_right.write(f'Existing points on map: {end_date_shape}')
             map_left.plotly_chart(sla_map_left, use_container_width=True)
             map_right.plotly_chart(sla_map_right, use_container_width=True)
             
@@ -213,8 +218,9 @@ def geo_comparison(results, profile_to_simulate, connection):
             st.subheader('Análise de repetidores')
             per_block, per_qty = st.columns(2)
             #st.write(comparison_results.sort_values(by=['Grupo - Nome', 'client_name'], ascending=[True, True]))
-            grouped_comparison_per_block.sort_values(by=['Grupo - Nome', 'client_name', 'qtd'], inplace=True, ascending=[True, True, False])
-            per_block.write(grouped_comparison_per_block)
+            grouped_comparison_per_block["improve"] = np.ceil((100 - grouped_comparison_per_block["IEF"])/100 * grouped_comparison_per_block["qtd"])
+            grouped_comparison_per_block.sort_values(by=['Grupo - Nome', 'improve'], inplace=True, ascending=[True, False])
+            per_block.write(grouped_comparison_per_block[grouped_comparison_per_block["data snapshot"] == end_dt_compare ])
             
             grouped_comparison_lastday.sort_values(by=['points_to_improve'], ascending=False, inplace=True)
             per_qty.write(grouped_comparison_lastday)
@@ -222,7 +228,8 @@ def geo_comparison(results, profile_to_simulate, connection):
             improvement_sla_fig = sla_improvement_bar.sla_improvement(grouped_comparison_lastday, xaxes='Endereço', yaxes='points_to_improve')
             st.plotly_chart(improvement_sla_fig, use_container_width=True)
         with tab_bars:
-            fig_indiv_comparion = individual_comparison.individual_com_figure(data=grouped_comparison, start_date=start_dt_compare, end_date=end_dt_compare)
+            st.write(grouped_comparison.sort_values(by='qtd', ascending=False))
+            fig_indiv_comparion = individual_comparison.individual_com_figure(data=grouped_comparison.sort_values(by="qtd"), start_date=start_dt_compare, end_date=end_dt_compare)
             st.plotly_chart(fig_indiv_comparion, use_container_width=True)
 
     except:

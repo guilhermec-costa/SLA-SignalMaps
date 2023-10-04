@@ -18,5 +18,5 @@ def individual_com_figure(data:pd.DataFrame, start_date, end_date):
     fig.update_xaxes(ticksuffix='%', showgrid=True, gridwidth=1.5)
     update_figs_layout.prettify_fig(fig)
     update_figs_layout.alter_legend(fig, title='Analysis date')
-    update_figs_layout.alter_hover(fig, mode='x unified')
+    update_figs_layout.alter_hover(fig, mode='closest')
     return fig

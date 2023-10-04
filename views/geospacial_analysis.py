@@ -101,10 +101,6 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
         st.write(filtered_group.df)
         st.markdown('---')
         st.write(filtered_data.df)
-        # st.data_editor(filtered_data.df,
-        #         column_config={
-        #             "IEF":st.column_config.ProgressColumn('SLA', min_value=0, max_value=100, format='%.2f')
-        #         })
         
         dados = convert_df(filtered_data.df)
         date = filtered_data.df['data snapshot'].unique()[0]
@@ -153,6 +149,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
             #qty_of_gtw = c_gtw_number.number_input('Distribute some gateways: ', min_value=0, max_value=filtered_group.df['Pontos instalados'].max())
             if connection == 'laageriotcomgas':
                 if profile_to_simulate == 38:
+                    #default = NOT_INSTALLED
                     default = INSTALLED_GATEWAYS+NOT_INSTALLED
                 else:
                     default=[]
@@ -183,7 +180,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
     if st.session_state.gtw_filters:
         st.session_state.gtw_filters = False
         
-        # concorrência para cálculo de latitude e longitudes dos polígonos de cada endereço
+        # lista de latitudes e longitudes centrais para cada endereço
         lat_list, lon_list = grouped_personalized['Latitude'].to_numpy(), grouped_personalized['Longitude'].to_numpy()
         with ThreadPoolExecutor(4) as executor:
             list_of_polygons = list(executor.map(polygons.calculate_polygons, lat_list, lon_list, [gtw_range]*len(lat_list)))
