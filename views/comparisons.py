@@ -83,12 +83,21 @@ def geo_comparison(results, profile_to_simulate, connection):
     df_all_unit_services = results['ALL_UNITS']
     jardins_coordenadas = data_treatement.read_data('coordenadas_jardins.csv')
     
-    INSTALLED_GATEWAYS_OF = [gtw for gtw in INSTALLED_GATEWAYS if gtw in df_all_unit_services['Endereço'].unique()]
+    #INSTALLED_GATEWAYS_OF = [gtw for gtw in INSTALLED_GATEWAYS if gtw in df_all_unit_services['Endereço'].unique()]
 
     st.subheader('Comparasion analysis')
     with st.form('comparison_analysis'):
+        if connection == 'laageriotcomgas':
+            if profile_to_simulate == 38:
+                #default = NOT_INSTALLED
+                #default = INSTALLED_GATEWAYS+NOT_INSTALLED
+                default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(NOT_INSTALLED)].unique()
+            else:
+                default=[]
+        elif connection == 'laageriotsabesp':
+            default = []
         c_address_comp, c_resid_comp = st.columns(2)
-        addresses_to_compare = c_address_comp.multiselect('Choose any address to compare', options=df_all_unit_services['Endereço'].unique(), default=INSTALLED_GATEWAYS_OF)
+        addresses_to_compare = c_address_comp.multiselect('Choose any address to compare', options=df_all_unit_services['Endereço'].unique(), default=default)
         condos_to_compare = c_resid_comp.multiselect('Choose any residence to compare', options=df_all_unit_services['Grupo - Nome'].unique())
         start_dt_compare = c_address_comp.date_input('Start date', value=datetime.datetime.today() - datetime.timedelta(days=1))
         end_dt_compare = c_resid_comp.date_input('End date', value=datetime.datetime.today())

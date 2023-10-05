@@ -67,9 +67,10 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
         WHERE {where_clause}"""
         
         if connection_name == 'laageriotcomgas':
-                ALL_UNITS += f""" AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-                                          AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-                                """
+                # ALL_UNITS += f""" AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+                #                           AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+                #                 """
+                ALL_UNITS += f' AND dsl.snapshot_date_int = {conv_date}'
         if connection_name == 'laageriotsabesp':
                 ALL_UNITS += f' AND dsl.snapshot_date_int = {conv_date}'
         return ALL_UNITS

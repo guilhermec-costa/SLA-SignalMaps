@@ -23,7 +23,6 @@ def convert_df(df):
     # IMPORTANT: Cache the conversion to prevent computation on every rerun
     return df.to_csv().encode('utf-8')
 
-notinstalled = []
 def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connection):
     # inicialização das variáveis de sessão
     session_states.initialize_session_states([('main_data', pd.DataFrame()), ('grouped_data', pd.DataFrame()), ('general_data', pd.DataFrame())])
@@ -39,7 +38,6 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
     df_all_unit_services = results['ALL_UNITS']
     df_all_unit_services['Ponto'] = list(zip(df_all_unit_services['Latitude'], df_all_unit_services['Longitude']))
     df_all_unit_services['Ponto'] = df_all_unit_services['Ponto'].apply(lambda x: Point(x))
-    results['ALL_UNITS'] = df_all_unit_services.copy()
 
     agrupado_por_condo = df_all_unit_services.groupby(by=['Unidade de Negócio - Nome','Cidade - Nome', 'Grupo - Nome', 'Endereço']).agg({'IEF':np.mean, 'Matrícula':'count', 'Latitude':np.mean, 'Longitude':np.mean}).reset_index()
     agrupado_por_condo.IEF = agrupado_por_condo.IEF.apply(lambda x: round(x, 2))
@@ -96,9 +94,10 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
     cp_main_data = filtered_data.df.copy()
     
     filtered_group.df.rename(columns={'Matrícula':'Pontos instalados'}, inplace=True)
-    filtered_group.df.sort_values(by='Pontos instalados', ascending=False)
     # expander para exibição de dados filtrados
     with st.expander('Filtered data:'):
+        filtered_group.df["improve"] = np.ceil((100 - filtered_group.df["IEF"])/100 * filtered_group.df["Pontos instalados"])
+        filtered_group.df.sort_values(by='improve', ascending=False, inplace=True)
         st.write(filtered_group.df)
         st.markdown('---')
         st.write(filtered_data.df)
@@ -111,10 +110,8 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
 
     # resumo de métricas dos dados filtrados
     theme_position, ponto_filtrado, sla_filtrado, opc_agrupamento, *_ = st.columns(5)
-    theme_position.metric('Filtered addresses:', f'{filtered_group.df.shape[0]} ({round(filtered_group.df.shape[0] / len(agrupado_por_condo) * 100, 2)})%',
-                        help=f'Total of addresses: {len(agrupado_por_condo)}')
-    ponto_filtrado.metric('Pontos filtrados:', f'{filtered_group.df["Pontos instalados"].sum()} ({round(len(filtered_data.df) / filtered_data.df.shape[0] * 100, 2)})%',
-                        help=f'Total of installations: {results["ALL_UNITS"].shape[0]}')
+    theme_position.metric('Addresses:', f'{filtered_group.df.shape[0]}')
+    ponto_filtrado.metric('Installations:', f'{filtered_group.df["Pontos instalados"].sum()}')
     sla_filtrado.metric('Filtered SLA %', value=f'{round(np.mean(filtered_group.df.IEF), 2)}%')
     st.markdown('---')
     
@@ -151,7 +148,8 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
             if connection == 'laageriotcomgas':
                 if profile_to_simulate == 38:
                     #default = NOT_INSTALLED
-                    default = INSTALLED_GATEWAYS+NOT_INSTALLED
+                    #default = INSTALLED_GATEWAYS+NOT_INSTALLED
+                    default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(INSTALLED_GATEWAYS+NOT_INSTALLED)].unique()
                 else:
                     default=[]
             elif connection == 'laageriotsabesp':
@@ -189,7 +187,10 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
         contained_index = []
         with st.spinner('Calculating polygons...'):
             # concorrência para cálculo de pontos afetados e plottagem dos polígonos nos gráficos
-            start = time.perf_counter()
+            array_of_points = np.array(cp_main_data["Ponto"])
+            #start = time.perf_counter()
+            INSTALLED_COLOR = 'rgba(55, 189, 115, 0.6)'
+            NOT_INSTALLED_COLOR = 'rgba(249, 63, 30, 0.8)'
             with ThreadPoolExecutor(4) as executor:
                 for n in stqdm(range(len(lat_list))):
                     current_polygon, current_list_of_circles = list_of_polygons[n][0], list_of_polygons[n][1]
@@ -198,7 +199,8 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                     temporary_longs = [tuple_of_coords[1] for tuple_of_coords in current_list_of_circles]
                     st.session_state.polygon_df = pd.DataFrame(data={'Latitude':temporary_lats, 'Longitude':temporary_longs})
 
-          
+
+                    #args = [(index, row, current_polygon) for index, row in enumerate(array_of_points)]
                     args = [(index, row[-1], current_polygon) for index, *row in cp_main_data.itertuples()]
                     results = executor.map(polygons.check_if_pol_contains, args)
                     contained_index.extend([i for i in results if i is not None])
@@ -206,18 +208,15 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                     cp_main_data = cp_main_data[~cp_main_data.index.isin(contained_index)]
                     
                      
-                    installed_color = 'rgba(55, 189, 115, 0.6)'
-                    not_installed_color = 'rgba(249, 63, 30, 0.8)'
-                    color = installed_color if grouped_personalized.loc[n:n, 'Endereço'].values[0] in INSTALLED_GATEWAYS else not_installed_color
-                    if grouped_personalized.loc[n:n, 'Endereço'].values[0] not in notinstalled:
-                        notinstalled.append(grouped_personalized.loc[n:n, 'Endereço'].values[0])
+                    color = INSTALLED_COLOR if grouped_personalized.loc[n:n, 'Endereço'].values[0] in INSTALLED_GATEWAYS else NOT_INSTALLED_COLOR
+
                     if st.session_state.polygon_df is not None:
                         sla_maps.add_traces_on_map(st.session_state.grouped_points_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
                         sla_maps.add_traces_on_map(st.session_state.grouped_sla_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])                 
                         sla_maps.add_traces_on_map(st.session_state.all_points_figure, another_data=st.session_state.polygon_df, fillcolor=color, name=grouped_personalized.loc[n:n, 'Endereço'].values[0])
         
-        end = time.perf_counter()
-        print('Tempo demorado: ', end - start)
+        #end = time.perf_counter()
+        #print('Tempo demorado: ', end - start)
         affected_points = filtered_data.df.loc[contained_index]
         affected_points.drop_duplicates(subset=['Matrícula'], inplace=True)
         qty_that_is_contained = affected_points.shape[0]

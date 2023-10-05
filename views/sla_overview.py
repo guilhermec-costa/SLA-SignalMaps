@@ -44,6 +44,7 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate, connection
         if submit_form:
             new_query = queries_raw_code.all_units_info(status_day, connection=connection)
             df_all_unit_services = pd.DataFrame(tmp_connection.run_single_query(new_query))
+            results['ALL_UNITS'] = df_all_unit_services
 
     #df_recent_readings = df_recent_readings[df_recent_readings['reading_date'].dt.year > 2000]
 
