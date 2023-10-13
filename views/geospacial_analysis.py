@@ -253,16 +253,16 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
     choosed_theme = theme_position.selectbox('Choose any theme', options=theme_options, index=0)
     update_figs_layout.update_fig_layouts([st.session_state.grouped_points_figure, st.session_state.grouped_sla_figure, st.session_state.all_points_figure], theme=choosed_theme)
     
-    def handle_selection(event, eventdata):
-        st.write('NA FUNÇÃO')
-        if eventdata:
-            selected_points = eventdata["Latitude"]
-            st.write(selected_points)
+    # def handle_selection(event, eventdata):
+    #     st.write('NA FUNÇÃO')
+    #     if eventdata:
+    #         selected_points = eventdata["Latitude"]
+    #         st.write(selected_points)
             
     tab_grouped_condo, tab_grouped_sla, tab_all_points = st.tabs(['SLA map grouped by address', 'SLA map grouped by average SLA', 'SLA map - All points'])
     with tab_grouped_condo:
         st.plotly_chart(st.session_state.grouped_points_figure, use_container_width=True)
-        st.session_state.grouped_points_figure.data[0].on_selection(handle_selection)
+        #st.session_state.grouped_points_figure.data[0].on_selection(handle_selection)
     with tab_grouped_sla:
         st.plotly_chart(st.session_state.grouped_sla_figure, use_container_width=True)
     with tab_all_points:

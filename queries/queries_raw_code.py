@@ -76,7 +76,7 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
         return ALL_UNITS
 
 
-def individual_comparison(addresses:List[str], residences:List[str], startdt:datetime.date, enddt:datetime.date, company_id,
+def individual_comparison(addresses:List[str], residences:List[str], startdt:datetime.date, enddt:datetime.date, company_id, installations_until:datetime.date,
                           **kwargs) -> str:
         connection_name = kwargs['connection']
         if addresses == [] and residences == []:
@@ -85,9 +85,10 @@ def individual_comparison(addresses:List[str], residences:List[str], startdt:dat
 
         convstart_dt = datetime.datetime.strftime(startdt, format='%Y%m%d')
         convend_dt = datetime.datetime.strftime(enddt, format='%Y%m%d')
-        where_clause = f"comp.id = {company_id} AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int IN ({convstart_dt}, {convend_dt})"
+        converted_installations_until = datetime.datetime.strftime(installations_until, format="%Y%m%d")
+        where_clause = f"comp.id = {company_id} AND r.status = 'ACTIVATED' AND dsl.snapshot_date_int IN ({convstart_dt}, {convend_dt}) AND date(r.activated_at) <= {converted_installations_until}"
         
-        where_conditions = [f"comp.id = {company_id}", "r.status = 'ACTIVATED'", f"dsl.snapshot_date_int IN ({convstart_dt}, {convend_dt})"]
+        where_conditions = [f"comp.id = {company_id}", "r.status = 'ACTIVATED'", f"dsl.snapshot_date_int IN ({convstart_dt}, {convend_dt})", f"date(r.activated_at) <= {converted_installations_until}"]
     
         if addresses or residences:
                 or_conditions = []

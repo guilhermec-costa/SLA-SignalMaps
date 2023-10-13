@@ -91,23 +91,24 @@ def geo_comparison(results, profile_to_simulate, connection):
             if profile_to_simulate == 38:
                 #default = NOT_INSTALLED
                 #default = INSTALLED_GATEWAYS+NOT_INSTALLED
-                default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(NOT_INSTALLED)].unique()
+                default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(INSTALLED_GATEWAYS+NOT_INSTALLED)].unique()
             else:
                 default=[]
         elif connection == 'laageriotsabesp':
             default = []
-        c_address_comp, c_resid_comp = st.columns(2)
+        c_address_comp, c_resid_comp, c_installations_day = st.columns(3)
         addresses_to_compare = c_address_comp.multiselect('Choose any address to compare', options=df_all_unit_services['Endereço'].unique(), default=default)
         condos_to_compare = c_resid_comp.multiselect('Choose any residence to compare', options=df_all_unit_services['Grupo - Nome'].unique())
         start_dt_compare = c_address_comp.date_input('Start date', value=datetime.datetime.today() - datetime.timedelta(days=1))
         end_dt_compare = c_resid_comp.date_input('End date', value=datetime.datetime.today())
+        status_day = c_installations_day.date_input("Installations until: ", value=datetime.datetime.today() - datetime.timedelta(days=1))
         submit_comparion = st.form_submit_button('Start comparison')
         include_around_points = c_address_comp.checkbox('Enable points around')
         if include_around_points:
             st.session_state.enable_around_affected_points = True
         if submit_comparion:
             comparison_query = queries_raw_code.individual_comparison(addresses=addresses_to_compare, residences=condos_to_compare, startdt=start_dt_compare, enddt=end_dt_compare, company_id=profile_to_simulate,
-                                                                      connection=connection)
+                                                                      connection=connection, installations_until = status_day)
             if comparison_query != "no data":
                 
                 comparison_results = pd.DataFrame(tmp_connection.run_single_query(command=comparison_query))
@@ -209,13 +210,15 @@ def geo_comparison(results, profile_to_simulate, connection):
             sla_maps.add_traces_on_map(sla_map_left, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
             sla_maps.add_traces_on_map(sla_map_right, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
             st.markdown('---')
-            map_left.metric(f'SLA on {start_dt_compare}', value=f'{round(start_date_sla, 2)}%')
+            #map_left.metric(f'SLA on {start_dt_compare}', value=f'{round(start_date_sla, 2)}%', delta=start_date_shape)
+            map_left.metric(f'Affected points on {start_dt_compare}', value=start_date_shape, delta=0)
             #map_left.write(f'Existing points on map: {start_date_shape}')
             
             diff = round(end_date_sla - start_date_sla)
             possible_improvement = round((100 - end_date_sla), 2)
             possible_points_to_solve = trunc((possible_improvement/100) * grouped_comparison_lastday.qtd.sum())
-            map_right.metric(f'SLA on {end_dt_compare}', value=f'{round(end_date_sla, 2)}%', delta=f'{diff}%')
+            #map_right.metric(f'SLA on {end_dt_compare}', value=f'{round(end_date_sla, 2)}%', delta=end_date_shape)
+            map_right.metric(f'Affected points on {end_dt_compare}', value=end_date_shape, delta=end_date_shape - start_date_shape)
             st.metric(f'Possible SLA improvement: ', value=possible_improvement,
                              help=f'{possible_points_to_solve} installations')
             #map_right.write(f'Existing points on map: {end_date_shape}')
