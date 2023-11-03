@@ -150,6 +150,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                     #default = NOT_INSTALLED
                     #default = INSTALLED_GATEWAYS+NOT_INSTALLED
                     default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(INSTALLED_GATEWAYS+NOT_INSTALLED)].unique()
+                    #default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(NOT_INSTALLED)].unique()
                 else:
                     default=[]
             elif connection == 'laageriotsabesp':
@@ -203,6 +204,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                     #args = [(index, row, current_polygon) for index, row in enumerate(array_of_points)]
                     args = [(index, row[-1], current_polygon) for index, *row in cp_main_data.itertuples()]
                     results = executor.map(polygons.check_if_pol_contains, args)
+                    contained_index.extend([i for i in results if i is not None])
                     contained_index.extend([i for i in results if i is not None])
                     
                     cp_main_data = cp_main_data[~cp_main_data.index.isin(contained_index)]

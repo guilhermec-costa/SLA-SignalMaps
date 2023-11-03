@@ -60,8 +60,8 @@ class App:
                         st.session_state.ALL_RESULTS['PORT_ZERO']  = queries_instancy.run_single_query(command=queries_raw_code.port_zero(company_id=self.profile_to_simulate,
                                                                                                          connection= self.choosed_connection))
                         
-                        st.session_state.ALL_RESULTS['SLA_OVER_TIME_ALL_UNITS'] = queries_instancy.run_single_query(command=queries_raw_code.sla_over_time_all_units(company_id=self.profile_to_simulate,
-                                                                                                                           connection= self.choosed_connection))
+                        # st.session_state.ALL_RESULTS['SLA_OVER_TIME_ALL_UNITS'] = queries_instancy.run_single_query(command=queries_raw_code.sla_over_time_all_units(company_id=self.profile_to_simulate,
+                        #                                                                                                    connection= self.choosed_connection))
                         
                         #st.session_state.ALL_RESULTS['DAILY_TRANSMISSIONS'] = queries_instancy.run_single_query(command=queries_raw_code.daily_transmissions(company_id=self.profile_to_simulate, connection = self.choosed_connection))
                         #st.session_state.ALL_RESULTS['RECENT_READINGS'] = recente_readings

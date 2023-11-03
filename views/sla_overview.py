@@ -8,16 +8,16 @@ import plotly.graph_objects as go
 import datetime
 
 def sla_overview(results:querie_builder.Queries, profile_to_simulate, connection) -> None:
-    metrics_data_30days = results['SLA_OVER_TIME_ALL_UNITS'] #querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
-    # metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS_NO_GROUPED')
-    metrics_data_30days = metrics_data_30days.groupby(by=['snapshot_date', 'name']).mean()
-    metrics_data_30days.sla_mean = round(metrics_data_30days.sla_mean * 100, 2)
-    metrics_data_30days.rssi_mean = round(metrics_data_30days.rssi_mean, 2)
-    metrics_data_30days.battery_voltage_mean = round(metrics_data_30days.battery_voltage_mean, 2)
+    # metrics_data_30days = results['SLA_OVER_TIME_ALL_UNITS'] #querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS')
+    # # metrics_data_30days = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='SLA_OVER_TIME_ALL_UNITS_NO_GROUPED')
+    # metrics_data_30days = metrics_data_30days.groupby(by=['snapshot_date', 'name']).mean()
+    # metrics_data_30days.sla_mean = round(metrics_data_30days.sla_mean * 100, 2)
+    # metrics_data_30days.rssi_mean = round(metrics_data_30days.rssi_mean, 2)
+    # metrics_data_30days.battery_voltage_mean = round(metrics_data_30days.battery_voltage_mean, 2)
     df_all_unit_services = results['ALL_UNITS'] #querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='ALL_UNITS')
     #df_recent_readings = querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='RECENT_READINGS')
     port_zero_data = results['PORT_ZERO'] #querie_builder.Queries.load_imporant_data(queries_responses=results, specific_response='PORT_ZERO')
-    metrics_data_30days.reset_index(inplace=True)
+    # metrics_data_30days.reset_index(inplace=True)
     
     port_zero_data.drop_duplicates(subset=['created_at','meter_id'], keep='first', inplace=True)
     port_zero_grouped = port_zero_data[['name', 'created_at', 'code', 'status']].groupby(by=['name','created_at', 'status']).agg({'code':'count'}).reset_index()
@@ -48,23 +48,23 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate, connection
 
     #df_recent_readings = df_recent_readings[df_recent_readings['reading_date'].dt.year > 2000]
 
-    metrics_data_30days = data_treatement.clear_dataframe(metrics_data_30days, col_subset='name', vl_to_exclude='Homologação LAB COMGÁS')
+    # metrics_data_30days = data_treatement.clear_dataframe(metrics_data_30days, col_subset='name', vl_to_exclude='Homologação LAB COMGÁS')
     df_all_unit_services = data_treatement.clear_dataframe(df_all_unit_services, col_subset='Unidade de Negócio - Nome', vl_to_exclude='Homologação LAB COMGÁS')
     #df_recent_readings = data_treatement.clear_dataframe(df_recent_readings, col_subset='name', vl_to_exclude='Homologação LAB COMGÁS')
 
     df_sla_per_city = df_all_unit_services.groupby(by='Cidade - Nome').agg({'IEF':'mean', 'Matrícula':'count'}).apply(lambda x: round(x, 2)).sort_values(by='IEF', ascending=True)
     df_sla_all_BU = df_all_unit_services.groupby('Unidade de Negócio - Nome').agg({'IEF':'mean', 'Matrícula':'count'}).reset_index()
-    all_metrics_grouped_by_dt = metrics_data_30days.groupby(by='snapshot_date').mean()
+    # all_metrics_grouped_by_dt = metrics_data_30days.groupby(by='snapshot_date').mean()
     gauge_chart = sla_indicator_chart.gauge_sla_figure(df_sla_all_BU, period=status_day)
     sla_per_city_fig = sla_per_city.sla_per_city(df_sla_per_city)
-    all_metrics_fig = sla_bat_rssi_all_project.metrics_all_projects(all_metrics_grouped_by_dt)
+    # all_metrics_fig = sla_bat_rssi_all_project.metrics_all_projects(all_metrics_grouped_by_dt)
     
     # concerto manual de métrica
     #metrics_data_30days.iloc[-3:, -3] = [71.1, 67, 78.5]
-    sla_30days = sla_last_30days.sla_last_30days(metrics_data_30days)
-    rssi_30days = rssi_last_30days.rssi_last_30days(metrics_data_30days)
-    boxplot_metrics = metrics_boxplot.metrics_boxplot(metrics_data_30days)
-    battery_voltage30days = battery_voltage_last30days.battery_voltage(metrics_data_30days)
+    # sla_30days = sla_last_30days.sla_last_30days(metrics_data_30days)
+    # rssi_30days = rssi_last_30days.rssi_last_30days(metrics_data_30days)
+    # boxplot_metrics = metrics_boxplot.metrics_boxplot(metrics_data_30days)
+    # battery_voltage30days = battery_voltage_last30days.battery_voltage(metrics_data_30days)
     st.plotly_chart(gauge_chart, use_container_width=True)
     st.markdown('---')
     st.markdown('###')
@@ -73,22 +73,22 @@ def sla_overview(results:querie_builder.Queries, profile_to_simulate, connection
     st.header('Overall Analysis - Last 30 days :chart_with_upwards_trend:')
     st.markdown('---')
     st.markdown('###')
-    st.plotly_chart(all_metrics_fig, use_container_width=True)
+    # st.plotly_chart(all_metrics_fig, use_container_width=True)
     st.markdown('---')
     st.markdown('###')
     st.header('Individual Analysis')
     st.markdown('---')
     sla_tab, rssi_tab, battery_tab = st.tabs(['SLA figure', 'RSSI figure', 'Battery figure'])
-    with sla_tab:
-        st.plotly_chart(sla_30days, use_container_width=True)
-    with rssi_tab:
-        st.plotly_chart(rssi_30days, use_container_width=True)
-    with battery_tab:
-        st.plotly_chart(battery_voltage30days, use_container_width=True)
+    # with sla_tab:
+    #     st.plotly_chart(sla_30days, use_container_width=True)
+    # with rssi_tab:
+    #     st.plotly_chart(rssi_30days, use_container_width=True)
+    # with battery_tab:
+    #     st.plotly_chart(battery_voltage30days, use_container_width=True)
     st.markdown('---')
     st.markdown('###')
     st.markdown('---')
-    st.plotly_chart(boxplot_metrics, use_container_width=True)
+    # st.plotly_chart(boxplot_metrics, use_container_width=True)
     st.markdown('---')
     portzero_overall, portzero_segreg = st.tabs(['Port 0 Overall', 'Port 0 by Bussiness Unit'])
     port_zero_fig_overall = port_zero.port_zero_plot(data=port_zero_grouped_onlydate, x_axis='created_at', y_axis='code')

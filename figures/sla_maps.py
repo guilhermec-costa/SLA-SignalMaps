@@ -9,7 +9,7 @@ def get_mapbox_token() -> str:
     return st.secrets.mapbox.mapbox_token
 
 def check_bubble_size(type_of_group: str) -> dict.values:
-    dinamic_sizes = {'Pontos instalados': 35, 'IEF': 25}
+    dinamic_sizes = {'Pontos instalados': 25, 'IEF': 25}
     return dinamic_sizes.get(type_of_group)
 
 @st.cache_data
