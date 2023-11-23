@@ -14,53 +14,54 @@ from math import trunc
 from queries import data_treatement
 
 INSTALLED_GATEWAYS = [
-    "EST SAO JUDAS, 190",
-    "R JUAN VICENTE,482",
-    "AV PAULO AYRES,75,PARQUE PINHEIROS",
-    "R ENG JOAO LANG, 50",
-    "R JUBAIR CELESTINO, 195",
-    "R PAULA RODRIGUES, 259",
-    "R AGOSTINHO NAVARRO, 971",
-    "R BACTORIA,174",
-    "AV MANOEL PEDRO PIMENTEL, 200",
-    "R CATIARA,267,JARDIM UMARIZAL",
-    "AV NOVE DE JULHO,544",
-    "R MASATO SAKAI,180",
-    "AV ODAIR SANTANELLI 100, PARQUE CECAP",
-    "AV VIDA NOVA,156",
-    "R COM ANTUNES DOS SANTOS, 1640",
-    "R JOSE FERREIRA DE CASTRO,173,VILA AMELIA",
-    "AV RAIMUNDO PEREIRA DE MAGALHAES, 12011",
-    "AV BUSSOCABA, 850",
-    "AV SARAH VELOSO, 1200",
-    "AV ALEXANDRE MACKENZIE, 950",
-    "R MARIA DE LURDES GALVAO DE FRANCA, 640",
-    "R PAIM,235",
-    "R. Bergamota,470",
-    "R CAYOWAA,2046",
-    "AV DNA BLANDINA IGNEZ JULIO, 741",
-    "AL CASA BRANCA,343",
-    "R PASCOAL RANIERI MAZZILLI,233",
-    "R PAULO ROBERTO TRIVELLI, 44",
-    "R VICENTE FERREIRA LEITE, 512",
-    "TV TRES DE OUTUBRO, 7",
-    "R. Camilo, 556",
-    "R CANARIO,1111"
+    'EST SAO JUDAS, 190',
+    'R JUAN VICENTE,482',
+    'AV PAULO AYRES,75,PARQUE PINHEIROS',
+    'R ENG JOAO LANG, 50',
+    'R JUBAIR CELESTINO, 195',
+    'R PAULA RODRIGUES, 259',
+    'R AGOSTINHO NAVARRO, 971',
+    'R BACTORIA,174',
+    'AV MANOEL PEDRO PIMENTEL, 200',
+    'R CATIARA,267,JARDIM UMARIZAL',
+    'AV NOVE DE JULHO,544',
+    'R MASATO SAKAI,180',
+    'AV ODAIR SANTANELLI 100, PARQUE CECAP',
+    'AV VIDA NOVA,156',
+    'R COM ANTUNES DOS SANTOS, 1640',
+    'R TRAJANO REIS, 186',
+    'AL CORES DA MATA,1973',
+    'R JOSE FERREIRA DE CASTRO,173,VILA AMELIA',
+    'AV RAIMUNDO PEREIRA DE MAGALHAES, 12011',
+    'AV BUSSOCABA, 850',
+    'AL IBERICA,285',
+    'AV SARAH VELOSO, 1200',
+    'AV ALEXANDRE MACKENZIE, 950',
+    'R MARIA DE LURDES GALVAO DE FRANCA, 640',
+    'R PAIM,235',
+    'R. Bergamota,470',
+    'R CAYOWAA,2046',
+    'R GAROPA,199',
+    'R MANUEL MARTINS COLLACO,246',
+    'R CARAPAJO, 124',
+    'AV DO CURSINO,6601',
+    'AV DNA BLANDINA IGNEZ JULIO, 741',
+    'AL CASA BRANCA,343',
+    'R PASCOAL RANIERI MAZZILLI,233',
+    'R PAULO ROBERTO TRIVELLI, 44',
+    'R VICENTE FERREIRA LEITE, 512',
+    'TV TRES DE OUTUBRO, 7',
+    'R. Camilo, 556',
+    'R CANARIO,1111',
+    'R JOSE MARIA LISBOA,20',
 ]
 NOT_INSTALLED = [
-    "R DR ALFREDO ELLIS,301",
-    "R DA CONSOLACAO,3064",
-    "AV PE ESTANISLAU DE CAMPOS, 152",
-    "R TRAJANO REIS, 186",
-    "AV ENG ALBERTO DE ZAGOTTIS,897",
-    "AL CORES DA MATA,1973",
-    "AL IBERICA,285",
-    "R PROF ARTUR RAMOS,178",
-    "R CARAPAJO, 124",
-    "AV EDMUNDO AMARAL, 3935",
-    "PC FREDERICO JUNQUEIRA,33",
-    "R GAROPA,199",
-    "R MANUEL MARTINS COLLACO,246"
+    'R DR ALFREDO ELLIS,301',
+    'R DA CONSOLACAO,3064',
+    'AV PE ESTANISLAU DE CAMPOS, 152',
+    'AV ENG ALBERTO DE ZAGOTTIS,897',
+    'R PROF ARTUR RAMOS,178',
+    'AV EDMUNDO AMARAL, 3935'
 ]
 
 def get_improvement(qtd, ief):
@@ -212,18 +213,18 @@ def geo_comparison(results, profile_to_simulate, connection):
             sla_maps.add_traces_on_map(sla_map_left, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
             sla_maps.add_traces_on_map(sla_map_right, another_data=jardins_coordenadas, name='Jardins Area', fillcolor='rgba(31, 54, 251, 0.3)')
             st.markdown('---')
-            #map_left.metric(f'SLA on {start_dt_compare}', value=f'{round(start_date_sla, 2)}%', delta=start_date_shape)
+            map_left.metric(f'SLA on {start_dt_compare}', value=f'{round(start_date_sla, 2)}%', delta=start_date_shape)
             map_left.metric(f'Affected points on {start_dt_compare}', value=start_date_shape, delta=0)
-            #map_left.write(f'Existing points on map: {start_date_shape}')
+            # map_left.write(f'Existing points on map: {start_date_shape}')
             
             diff = round(end_date_sla - start_date_sla)
             possible_improvement = round((100 - end_date_sla), 2)
             possible_points_to_solve = trunc((possible_improvement/100) * grouped_comparison_lastday.qtd.sum())
-            #map_right.metric(f'SLA on {end_dt_compare}', value=f'{round(end_date_sla, 2)}%', delta=end_date_shape)
+            map_right.metric(f'SLA on {end_dt_compare}', value=f'{round(end_date_sla, 2)}%', delta=end_date_shape)
             map_right.metric(f'Affected points on {end_dt_compare}', value=end_date_shape, delta=end_date_shape - start_date_shape)
             st.metric(f'Possible SLA improvement: ', value=possible_improvement,
                              help=f'{possible_points_to_solve} installations')
-            #map_right.write(f'Existing points on map: {end_date_shape}')
+            # map_right.write(f'Existing points on map: {end_date_shape}')
             map_left.plotly_chart(sla_map_left, use_container_width=True)
             map_right.plotly_chart(sla_map_right, use_container_width=True)
             

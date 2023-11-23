@@ -149,7 +149,7 @@ def geo_analysis(results: querie_builder.Queries, profile_to_simulate, connectio
                 if profile_to_simulate == 38:
                     #default = NOT_INSTALLED
                     #default = INSTALLED_GATEWAYS+NOT_INSTALLED
-                    default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(INSTALLED_GATEWAYS+NOT_INSTALLED)].unique()
+                    default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(INSTALLED_GATEWAYS)].unique()
                     #default = results['ALL_UNITS']['Endereço'][results['ALL_UNITS']['Endereço'].isin(NOT_INSTALLED)].unique()
                 else:
                     default=[]

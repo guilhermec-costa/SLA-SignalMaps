@@ -17,7 +17,8 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
                 if company_id == 34:
                         bu_codes = ','.join(tuple(f"{BU_MAP_SABESP[bu]}" for bu in bussiness_unts)) if bussiness_unts != [] else ','.join(tuple(f"{value}" for value in BU_MAP_SABESP.values()))
         if connection_name == 'laageriotsabesp':
-                bu_codes = ",".join(['60814', "1", "2", "3", "4", "5"])
+                # bu_codes = ",".join(['60814', "1", "2", "3", "4", "5"])
+                bu_codes = '60814'
                 if period == datetime.datetime.today().date():
                         period = datetime.datetime.today().date() - datetime.timedelta(days=1)
 
@@ -67,10 +68,10 @@ def all_units_info(period = datetime.datetime.today().date(), company_id=38,
         WHERE {where_clause}"""
         
         if connection_name == 'laageriotcomgas':
-                ALL_UNITS += f""" AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-                                          AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
-                                """
-                # ALL_UNITS += f' AND dsl.snapshot_date_int = {conv_date}'
+                # ALL_UNITS += f""" AND dsl.id BETWEEN (SELECT min(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+                #                           AND (SELECT max(id) FROM daily_signal_logs dsl WHERE snapshot_date_int = {conv_date})
+                #                 """
+                ALL_UNITS += f' AND dsl.snapshot_date_int = {conv_date}'
         if connection_name == 'laageriotsabesp':
                 ALL_UNITS += f' AND dsl.snapshot_date_int = {conv_date}'
         return ALL_UNITS
